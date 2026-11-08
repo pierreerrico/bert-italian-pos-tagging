@@ -1,6 +1,6 @@
 # Ricognizione bibliografica: UPOS tagging su Italian-ISDT
 
-Ricerca consultata il 4 novembre 2026. Ricognizione mirata di fonti primarie, non revisione sistematica esaustiva. Ambito: UPOS italiano su split ufficiali Italian-ISDT. Non aggregare in una classifica unica release diverse, accuracy su parole gold, F1 end-to-end e macro-F1.
+Ricerca consultata il 4 novembre 2026; indicazioni sul protocollo del progetto aggiornate l’8 novembre 2026. Ricognizione mirata di fonti primarie, non revisione sistematica esaustiva. Ambito: UPOS italiano su split ufficiali Italian-ISDT. Non aggregare in una classifica unica release diverse, accuracy su parole gold, F1 end-to-end e macro-F1.
 
 ## Risultato della ricerca
 
@@ -18,7 +18,7 @@ Fabio Tamburini. *How “BERTology” Changed the State-of-the-Art also for Ital
 | mBERT | 98,73 ± 0,05 |
 | UmBERTo | 98,78 ± 0,08 |
 
-Corpus dichiarato: UD-ISDT 2.5. Il lavoro riporta media e deviazione standard di almeno cinque run e adotta gli split già disponibili. È il confronto bibliografico principale per il notebook attuale, ma non una prova del primato odierno. Non confondere questi valori con quelli su EVALITA 2007 o con XPOS.
+Corpus dichiarato: UD-ISDT 2.5. Il lavoro riporta media e deviazione standard di almeno cinque run e adotta gli split già disponibili. È un riferimento storico su UD 2.5; il progetto attuale utilizza UD 2.15 e UDPipe 2 come confronto quantitativo principale. Non confondere questi valori con quelli su EVALITA 2007 o con XPOS.
 
 [Articolo e metadati](https://aclanthology.org/2020.clicit-1.48/) · [PDF](https://aclanthology.org/2020.clicit-1.48.pdf)
 
@@ -32,7 +32,7 @@ Questi risultati documentano bene il riferimento originale. Prima di confrontarl
 
 ### 3. UmBERTo: risultato alto, protocollo da chiarire
 
-Il repository ufficiale di Parisi, Francia e Magnani (2020) riporta per UmBERTo Commoncrawl Cased su Italian-ISDT **98,977% accuracy** e **98,870 F1**. La tabella non identifica sufficientemente release e dettagli del protocollo per trattare il valore come direttamente confrontabile con il nostro UPOS su UD 2.5. Non assumere che l'F1 sia macro-F1. Inserire questo risultato come riferimento con comparabilità non accertata, senza usarlo per proclamare un vincitore.
+Il repository ufficiale di Parisi, Francia e Magnani (2020) riporta per UmBERTo Commoncrawl Cased su Italian-ISDT **98,977% accuracy** e **98,870 F1**. La tabella non identifica sufficientemente release e dettagli del protocollo per trattare il valore come direttamente confrontabile con il protocollo attuale su UD 2.15. Non assumere che l'F1 sia macro-F1. Inserire questo risultato come riferimento con comparabilità non accertata, senza usarlo per proclamare un vincitore.
 
 [Repository ufficiale, Results](https://github.com/musixmatchresearch/umberto#results)
 
@@ -54,7 +54,7 @@ Per Italian-ISDT: UDPipe 2.0 **98,8**, Gemma-2-2B **98,6**, Qwen2.5-7B **98,4**,
 
 ### 6. UDPipe 2: riferimento documentato su release recenti
 
-La documentazione ufficiale distingue esplicitamente input grezzo e tokenizzazione gold. Per `italian-isdt-ud-2.15-241121`, UPOS è **98,75** con tokenizzazione gold e **98,51** da testo grezzo. È un riferimento operativo utile, senza identificarlo automaticamente come SOTA. La differenza fra i due protocolli mostra perché non bisogna ordinare tutti i numeri nella stessa classifica. Per confrontarlo sul nostro benchmark servirebbe un esperimento controllato con versione e dati di training documentati.
+La documentazione ufficiale distingue esplicitamente input grezzo e tokenizzazione gold. Per `italian-isdt-ud-2.15-241121`, UPOS è **98,75** con tokenizzazione gold e **98,51** da testo grezzo. È un riferimento operativo utile, senza identificarlo automaticamente come SOTA. La differenza fra i due protocolli mostra perché non bisogna ordinare tutti i numeri nella stessa classifica. Nel progetto sono disponibili predizioni UDPipe 2 sul test ufficiale UD 2.15 con parole e confini di frase gold. Il notebook ne verifica modello, hash del test e allineamento e ricalcola accuracy e macro-F1 UPOS con le stesse convenzioni adottate per BERT.
 
 [Documentazione ufficiale dei modelli](https://ufal.mff.cuni.cz/udpipe/2/models)
 
@@ -70,15 +70,15 @@ La model card di BERTino riporta **0,9801 F1** su Italian-ISDT, contro **0,983**
 
 [Model card degli autori](https://huggingface.co/indigo-ai/BERTino) · [Preprint](https://arxiv.org/abs/2303.18121)
 
-## Scelta consigliata per questo progetto
+## Protocollo adottato nel progetto
 
-Mantenere un solo fine-tuning BERT e gli split ufficiali completi. Se si mantiene UD 2.5, usare Tamburini come confronto quantitativo principale e le fonti recenti come confronto critico separato. Non dichiarare che un eventuale superamento di 98,78 dimostri un nuovo SOTA.
+Il notebook utilizza gli split ufficiali di UD Italian-ISDT 2.15 e assume segmentazione gold. Confronta tre architetture: BERT congelato con classificazione lineare, BERT fine-tuned con classificazione lineare e BERT fine-tuned con CRF sulla sola sequenza UPOS.
 
-Per rendere più forte il riferimento attuale, si può scegliere UD 2.15 prima degli esperimenti finali e confrontarsi con UDPipe 2 e Matsuda et al. (2025), mantenendo separati protocolli e metriche. Cambiare release richiede rieseguire training e valutazione; non trasferire semplicemente i risultati già ottenuti. Un'alternativa è eseguire un sistema di riferimento sullo stesso test con input gold, documentando su quali dati è stato addestrato.
+Ogni architettura viene addestrata in due fasi: prima sul solo compito UPOS, poi su UPOS e FEATS a partire dal checkpoint UPOS selezionato per la stessa architettura e lo stesso seed. Nella seconda fase vengono aggiunte 14 teste lineari FEATS, mantenendo attiva la loss UPOS. Sono previste sei configurazioni, ciascuna con i seed 42, 123 e 456: 18 prove complessive, con cinque epoche per fase.
 
-Configurazione minima difendibile: accuracy primaria, macro-F1 e report per tag; copertura di tutte le parole verificata; baseline lessicale; selezione sul dev; idealmente tre seed; esempi d'errore e differenze di protocollo. Una sola seed resta possibile per risorse limitate, ma non sostiene conclusioni sulla variabilità.
+In entrambe le fasi il checkpoint è selezionato mediante macro-F1 UPOS sul development set. La valutazione finale riporta accuracy e macro-F1 UPOS su tutti i tag e sui tag presenti; per i modelli della seconda fase aggiunge accuracy e macro-F1 FEATS e accuracy congiunta. I risultati sono riassunti con media e deviazione standard sui seed e variazioni UPOS appaiate tra le fasi. L’interpretazione di queste variazioni considera anche l’addestramento aggiuntivo della seconda fase.
 
-Formulazione utilizzabile: «Valutiamo BERT italiano sul benchmark Italian-ISDT e ne confrontiamo le prestazioni con sistemi Transformer pubblicati e pipeline UD recenti. Distinguiamo i confronti sulla medesima release dai riferimenti su versioni o protocolli diversi; non rivendichiamo un primato assoluto».
+UDPipe 2, modello `italian-isdt-ud-2.15-241121`, è il riferimento esterno sul medesimo test gold per UPOS. I lavori su altre release e i sistemi con protocolli diversi rimangono riferimenti contestuali, con le rispettive condizioni di comparabilità. I risultati delle precedenti campagne sperimentali sono distinti da quelli del protocollo attuale.
 
 ## Limiti della ricognizione
 
