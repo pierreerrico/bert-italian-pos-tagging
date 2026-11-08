@@ -1,0 +1,373 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[italian]{babel}
+\usepackage{lmodern,microtype}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,booktabs,tabularx,array}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{url}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue!60!black}
+\setlength{\parskip}{0.25em}
+\setlength{\parindent}{1em}
+\emergencystretch=2em
+
+\begin{document}
+
+\begin{titlepage}
+    \begin{center}
+        \IfFileExists{images/immagine1.png}{\includegraphics[width=6.5cm]{images/immagine1.png}}{}
+        \par\vspace{1.5cm}
+        {\large \textsc{Dipartimento di Informatica \textbf{–} Scienza e Ingegneria}\par}
+        \vspace{1.5cm}
+        {\Large \textsc{Corso di Laurea Magistrale in} \par \textsc{Informatica}\par}
+        \vspace{1.5cm}
+        {\huge\bfseries
+        PoS tagging italiano con BERT\par}
+        \vspace{0.5cm}
+        {\Large Progetto di Natural Language Processing\par}
+        \vspace{2.5cm}
+    \end{center}
+
+    \begin{center}
+        {\large\textbf{Studente:} Pierre Errico\par}
+        \vspace{0.5cm}
+        {\large\textbf{Matricola:} 0001235580\par}
+    \end{center}
+
+    \vfill
+    \noindent\rule{\linewidth}{0.4pt}
+    \begin{center}
+    Anno Accademico 2026/2027
+    \end{center}
+\end{titlepage}
+
+\pagenumbering{Roman}
+\newgeometry{left=3cm,right=3cm,top=3cm,bottom=3cm}
+
+
+\chapter*{Abstract}
+
+Il Part-of-Speech (PoS) tagging è un compito di etichettatura di sequenze nel quale a ogni token viene assegnata una categoria grammaticale. Il presente lavoro si propone di affrontare il PoS tagging per la lingua italiana utilizzando un modello BERT preaddestrato, e confronta tre configurazioni: encoder congelato con classificatore lineare, fine-tuning completo con classificatore lineare e fine-tuning completo con l'aggiunta di un Conditional Random Field (CRF).
+
+L'obiettivo è valutare i risultati prodotti da ciascuna configurazione e confrontarli con quelli del sistema di riferimento UDPipe 2, utilizzando come benchmark UD Italian-ISDT 2.15, un treebank annotato secondo le linee guida Universal Dependencies.
+
+\newpage
+
+\tableofcontents
+
+\newpage
+\pagenumbering{arabic}
+
+\chapter{Introduzione}
+\section{Il compito di PoS tagging}
+
+Il PoS tagging è un problema di etichettatura di sequenze di token, nel quale a ogni token viene assegnata un'etichetta che ne identifica la categoria grammaticale nel contesto frasale. Un token corrisponde generalmente a una parola; può tuttavia indicare anche altri elementi della frase, come simboli e punteggiatura. Il PoS tagging è un compito fondamentale per l'analisi linguistica e costituisce una fase preliminare per numerose applicazioni di Natural Language Processing (NLP), tra cui la lemmatizzazione, l'analisi sintattica e la traduzione automatica~\cite{manning2011,goldberg2016}.
+
+Nel sistema Universal Dependencies (UD), l'inventario UPOS comprende le 17 categorie riportate nella Tabella~\ref{tab:upos}~\cite{ud,upos}. Le caratteristiche morfologiche, come genere, numero e tempo verbale, sono rappresentate separatamente, quando applicabili, mediante gli attributi del campo \texttt{FEATS}~\cite{conllu}.
+
+\begin{center}
+\footnotesize
+\begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}p{3.3cm}X}
+\toprule
+\textbf{Tag UPOS} & \textbf{Categoria grammaticale} & \textbf{Esempio contestuale}\\
+\midrule
+\texttt{ADJ} & Aggettivo & Il gatto è \textbf{nero}.\\
+\texttt{ADP} & Adposizione & Vado \textbf{a} casa.\\
+\texttt{ADV} & Avverbio & Il gatto dorme \textbf{tranquillamente}.\\
+\texttt{AUX} & Verbo ausiliare & Maria \textbf{ha} mangiato.\\
+\texttt{CCONJ} & Congiunzione coordinante & Leggo \textbf{e} scrivo.\\
+\texttt{DET} & Determinante & \textbf{Il} gatto dorme.\\
+\texttt{INTJ} & Interiezione & \textbf{Oh}, sei arrivato!\\
+\texttt{NOUN} & Nome comune & Il \textbf{gatto} dorme.\\
+\texttt{NUM} & Numerale & Ho \textbf{tre} libri.\\
+\texttt{PART} & Particella & John\textbf{'s} book.\\
+\texttt{PRON} & Pronome & \textbf{Lei} legge un libro.\\
+\texttt{PROPN} & Nome proprio & \textbf{Maria} legge un libro.\\
+\texttt{PUNCT} & Punteggiatura & Sei a casa\textbf{?}\\
+\texttt{SCONJ} & Congiunzione subordinante & Resto a casa \textbf{perché} piove.\\
+\texttt{SYM} & Simbolo & Il risultato è 2 \textbf{+} 3.\\
+\texttt{VERB} & Verbo & Il gatto \textbf{dorme}.\\
+\texttt{X} & Altro & Ha pronunciato \textbf{xfgh}.\\
+\bottomrule
+\end{tabularx}
+\refstepcounter{table}\label{tab:upos}
+\par\smallskip
+Tabella~\thetable: Categorie UPOS ed esempi contestuali. Per \texttt{PART} è illustrato il marcatore possessivo inglese; per \texttt{X}, una sequenza non interpretabile.
+\end{center}
+
+Per esempio, la frase «\emph{Il gatto dorme.}» può essere rappresentata attraverso la sequenza \texttt{DET NOUN VERB PUNCT}, dove a ciascun token può essere associato un campo \texttt{FEATS} che ne specifica le caratteristiche morfologiche, e.g. per «\emph{gatto}», etichettato come \texttt{NOUN}, contiene \texttt{Gender=Masc|Number=Sing}~\cite{conllu}.
+
+\section{Le principali sfide del PoS tagging}
+
+Una delle principali difficoltà del PoS tagging è rappresentata dall'ambiguità grammaticale: una stessa parola può appartenere a più categorie, e la scelta del tag corretto dipende dal contesto~\cite{manning2011}. Ad esempio, la parola \emph{porta} può essere un nome (e.g. «\emph{La porta è chiusa.}») o un verbo (e.g. «\emph{Lui porta il libro.}»).
+
+Un altro problema risiede nello sbilanciamento della distribuzione dei tag: alcune categorie, come nomi comuni (\texttt{NOUN}), determinanti (\texttt{DET}) e adposizioni (\texttt{ADP}), sono molto frequenti, mentre altre, come simboli (\texttt{SYM}) ed elementi non classificabili nelle altre categorie (\texttt{X}), compaiono raramente~\cite{isdt}. La presenza di classi con pochi esempi può rendere più difficile l'apprendimento di modelli robusti e generalizzabili~\cite{he2009}.
+
+A ciò si aggiungono la presenza di parole rare o mai osservate durante l'addestramento, come neologismi, termini specialistici e nomi propri, che il modello può quindi faticare a classificare~\cite{plank2016}; le differenze tra il dominio lessicale dei testi di addestramento e quello dei testi da analizzare, che possono ridurre la capacità di generalizzazione del modello~\cite{manning2011}; e gli eventuali errori o incoerenze nelle annotazioni, che possono influenzare sia l'apprendimento sia la valutazione~\cite{manning2011}.
+
+Queste problematiche evidenziano l'importanza di adottare modelli capaci di costruire rappresentazioni linguistiche sensibili al contesto e di sfruttare conoscenze apprese da grandi quantità di dati testuali~\cite{devlin2019}.
+
+\section{Modelli neurali per l'elaborazione del linguaggio}
+
+Naturalmente, il PoS tagging richiede modelli capaci di identificare le categorie grammaticali delle parole tenendo conto del contesto frasale. L'evoluzione delle tecniche di NLP ha progressivamente migliorato questa capacità, passando da rappresentazioni lessicali statiche ad architetture in grado di integrare informazioni contestuali sempre più complesse~\cite{goldberg2016}.
+
+Tra gli approcci neurali più influenti, Word2Vec~\cite{mikolov2013} ha permesso di apprendere rappresentazioni vettoriali dense delle parole, dette \textit{word embeddings}, nelle quali termini utilizzati in contesti simili tendono ad assumere rappresentazioni vicine. Tali embedding sono tuttavia statici, i.e. associano a ciascuna parola un unico vettore indipendentemente dal contesto, rappresentando quindi un limite per il PoS tagging.
+
+Le reti neurali ricorrenti (RNN), tra cui le Long Short-Term Memory (LSTM)~\cite{hochreiter1997}, consentono invece di produrre rappresentazioni dipendenti dal contesto attraverso l'elaborazione sequenziale dei token. Le architetture bidirezionali, come le BiLSTM, consentono inoltre di integrare informazioni provenienti da entrambe le direzioni della sequenza~\cite{schuster1997,plank2016}. La natura ricorrente di questi modelli limita tuttavia la parallelizzazione e complica la gestione delle dipendenze a lungo raggio~\cite{vaswani2017}.
+
+L'architettura Transformer~\cite{vaswani2017} supera alcuni di questi limiti sostituendo la ricorrenza con meccanismi di attenzione. In particolare, la \textit{Self-Attention} permette di modellare direttamente le relazioni tra i token, anche distanti tra loro, favorendo un'elaborazione parallela della sequenza e la produzione di rappresentazioni contestuali.
+
+
+\section{Architettura BERT}
+
+Tra i modelli basati sull'architettura Transformer, Bidirectional Encoder Representations from Transformers (BERT)~\cite{devlin2019} sfrutta un Transformer Encoder bidirezionale per produrre rappresentazioni contestuali dei token, risultando particolarmente adatto a compiti come il PoS tagging, nei quali la classificazione grammaticale dipende dal contesto frasale.
+
+\subsection{Tokenizzazione}
+\label{subsec:tokenization}
+
+L'input dell'encoder di BERT è costituito da token prodotti da WordPiece, un metodo di tokenizzazione che mantiene le parole intere oppure le suddivide in frammenti più piccoli, detti \emph{subword}, selezionati da un vocabolario predefinito. Ad esempio, il tokenizer associato al modello \texttt{dbmdz/bert-base-italian-cased} rappresenta \emph{bicicletta} con un singolo token, mentre suddivide \emph{casetta} in \texttt{case} e \texttt{\#\#tta}; il prefisso \texttt{\#\#} indica la continuazione della parola. Questo approccio permette di rappresentare parole rare combinando frammenti già disponibili~\cite{devlin2019}.
+
+
+\subsection{Struttura dell'encoder}
+\label{subsec:encoder-structure}
+
+Il modello \texttt{dbmdz/bert-base-italian-cased} adotta la configurazione BERT-Base, composta da 12 blocchi Transformer Encoder, 12 teste di attenzione per blocco e rappresentazioni di dimensione 768~\cite{model}. Prima dell'elaborazione, gli embedding dei token vengono sommati a quelli posizionali e di segmento, che identificano rispettivamente la posizione nella sequenza e l'appartenenza ai segmenti di testo. Le rappresentazioni risultanti attraversano i 12 blocchi in successione, mantenendo invariata la loro dimensione~\cite{devlin2019}.
+
+Ogni blocco comprende una Multi-Head Self-Attention e una rete feed-forward. La prima esegue più operazioni di attenzione in parallelo, utilizzando proiezioni query, key e value apprese separatamente per ciascuna testa. Le uscite vengono concatenate e proiettate nuovamente nello spazio di dimensione 768~\cite{vaswani2017}. Una delle particolarità dell'architettura è l'attenzione bidirezionale: ciascun token può utilizzare sia il contesto precedente sia quello successivo, senza vincoli causali~\cite{devlin2019}.
+
+Per ciascuna testa, l'attenzione è calcolata come:
+
+\begin{equation}
+    \operatorname{Attention}(Q,K,V) =
+    \operatorname{softmax}\!\left(
+    \frac{QK^{\mathsf T}}{\sqrt{d_k}}
+    \right)V,
+\end{equation}
+
+dove $Q$, $K$ e $V$ sono proiezioni lineari apprese delle rappresentazioni in ingresso:
+\begin{itemize}
+    \item \textbf{Query ($Q$):} rappresentano le informazioni ricercate da ciascun token nel contesto;
+    \item \textbf{Key ($K$):} rappresentano le caratteristiche dei token utilizzate per calcolare la compatibilità con le query;
+    \item \textbf{Value ($V$):} rappresentano le informazioni da aggregare mediante i pesi di attenzione.
+\end{itemize}
+
+Il termine $d_k$ indica la dimensionalità dei vettori key, pari a $768/12=64$ per ciascuna testa.
+
+La rete feed-forward applica indipendentemente a ciascun token due trasformazioni lineari, da 768 a 3\,072 componenti e viceversa, separate da un'attivazione GELU. Mentre l'attenzione integra informazioni tra posizioni, questa rete elabora le rappresentazioni individualmente. 
+Entrambi i sottolivelli impiegano dropout per ridurre l'overfitting, oltre a connessioni residue e Layer Normalization per favorire la stabilità dell'addestramento~\cite{devlin2019,vaswani2017}.
+
+Al termine dei 12 blocchi, l'encoder restituisce un vettore contestuale di 768 componenti per ciascun token, utilizzabile dalle teste di classificazione dei compiti supervisionati.
+
+
+\subsection{Pre-addestramento}
+\label{subsec:pre-training}
+
+Nel BERT originale il preaddestramento combina il \emph{Masked Language Modeling} (MLM) e la \emph{Next Sentence Prediction} (NSP). Nel MLM viene selezionato casualmente il 15\% dei token della sequenza: di questi, l'80\% viene sostituito con il token speciale \texttt{[MASK]}, il 10\% con un token casuale e il restante 10\% rimane invariato. Il modello deve predire i token originali nelle posizioni selezionate, sfruttando il contesto bidirezionale. La NSP richiede invece di determinare se due segmenti di testo siano consecutivi nel corpus, mediante una classificazione binaria~\cite{devlin2019}.
+
+Attraverso il preaddestramento, BERT apprende rappresentazioni linguistiche contestuali da grandi quantità di testo, che possono successivamente essere adattate a diversi compiti supervisionati mediante fine-tuning. 
+
+Il modello \texttt{dbmdz/bert-base-italian-cased}, basato sull'architettura BERT-Base descritta in precedenza, è preaddestrato su corpora italiani e distingue tra lettere maiuscole e minuscole~\cite{model}.
+
+\section{Obiettivi del progetto}
+Il presente lavoro studia l'adattamento di BERT al PoS tagging della lingua italiana, estendendo l'analisi anche alla predizione delle caratteristiche morfologiche \texttt{FEATS}. Si confrontano tre configurazioni: BERT congelato con teste di classificazione addestrabili, BERT sottoposto a fine-tuning completo e BERT fine-tuned con un Conditional Random Field (CRF) sulla sola sequenza UPOS. L'obiettivo principale è valutare il contributo del fine-tuning dell'encoder e della decodifica strutturata alla predizione dei tag UPOS. La predizione delle caratteristiche \texttt{FEATS} costituisce un obiettivo aggiuntivo.
+
+Gli esperimenti utilizzano il treebank UD Italian-ISDT 2.15 e assumono parole già segmentate. UDPipe 2 costituisce il riferimento esterno per il confronto UPOS~\cite{isdt,udpipe}. Il protocollo sperimentale e le metriche di valutazione sono descritti nel capitolo dedicato alla metodologia (Capitolo~\ref{sec:metodologia}).
+
+\chapter{Metodologia}
+\label{sec:metodologia}
+
+Il protocollo sperimentale valuta l'adattamento di BERT alla predizione congiunta delle categorie UPOS e delle caratteristiche morfologiche FEATS. Le configurazioni condividono dati, tokenizzazione, inventari delle etichette e procedura di valutazione. Le differenze riguardano i parametri aggiornati durante l'addestramento e la decodifica della sequenza UPOS.
+
+\section{Disegno sperimentale}
+\label{sec:experimental-design}
+
+Si considerano tre configurazioni: un encoder congelato con teste lineari addestrabili, un encoder sottoposto a fine-tuning con le stesse teste e una variante fine-tuned con un CRF applicato alla sola uscita UPOS. Tutte utilizzano una testa UPOS e una testa per ciascun attributo FEATS. Il confronto tra le prime due configurazioni esamina l'adattamento dell'encoder con le rispettive impostazioni di ottimizzazione; il confronto tra le due varianti fine-tuned valuta l'introduzione delle transizioni UPOS. La condivisione dell'encoder consente a entrambi i compiti di contribuire all'apprendimento delle rappresentazioni~\cite{udify2019}.
+
+\begin{table}[htbp]
+\centering\small
+\begin{tabularx}{\textwidth}{lXXXr}
+\toprule
+Configurazione & Encoder & UPOS & FEATS & Learning rate\\
+\midrule
+BERT congelato & Pesi fissi & Lineare & Lineari & $10^{-3}$\\
+BERT fine-tuned & Addestrabile & Lineare & Lineari & $2\cdot10^{-5}$\\
+BERT + CRF & Addestrabile & Lineare e CRF & Lineari & $2\cdot10^{-5}$\\
+\bottomrule
+\end{tabularx}
+\caption{Configurazioni e learning rate. Le teste e l'eventuale CRF sono addestrabili in tutte le prove.}
+\label{tab:models}\label{tab:lr}
+\end{table}
+
+Ogni configurazione viene eseguita con i seed 42, 123 e 456, per un totale di nove prove. Ogni prova parte dal checkpoint preaddestrato originale e inizializza le proprie teste di classificazione. La ripetizione sugli stessi seed permette di osservare la variabilit\`a dei risultati e di confrontare le configurazioni per coppie di esecuzioni~\cite{seeds}.
+
+\section{Dati e annotazioni}
+\label{sec:method-data}
+
+\subsection{Corpus e suddivisione}
+
+Il corpus impiegato \`e UD Italian-ISDT, release \texttt{r2.15}, con gli split ufficiali di training, sviluppo e test~\cite{isdt}. La Tabella~\ref{tab:data} ne riporta le dimensioni. Il training viene utilizzato per aggiornare i parametri e costruire gli inventari delle classi; il development set guida la selezione del checkpoint; il test fornisce la valutazione finale.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+Split & Frasi & Parole & Tag UPOS presenti\\
+\midrule
+Train & 13\,121 & 276\,014 & 17\\
+Dev & 564 & 11\,907 & 17\\
+Test & 482 & 10\,417 & 15\\
+\bottomrule
+\end{tabular}
+\caption{Dimensioni degli split di UD Italian-ISDT 2.15. Le parole corrispondono alle righe CoNLL-U con identificatore intero.}
+\label{tab:data}
+\end{table}
+
+La lettura dei file CoNLL-U conserva le parole sintattiche identificate da un ID intero. Le righe che descrivono token multiparola e nodi vuoti vengono escluse dalle sequenze etichettate~\cite{conllu}. Gli input linguistici sono le forme delle parole e i confini di frase del corpus. Il protocollo assume pertanto segmentazione gold e misura l'assegnazione delle etichette sulle medesime parole per tutte le configurazioni.
+
+Gli split ufficiali sono mantenuti senza redistribuire le frasi. Un controllo delle sequenze di forme ha rilevato una frase identica tra training e sviluppo e nessuna sequenza identica tra training e test. Nel test, \texttt{INTJ} e \texttt{PART} hanno supporto zero, mentre \texttt{SYM} e \texttt{X} comprendono rispettivamente 5 e 13 parole. Queste caratteristiche motivano l'analisi delle prestazioni per categoria.
+
+\subsection{Rappresentazione di UPOS e FEATS}
+
+L'inventario UPOS comprende i 17 tag osservati nel training. Ogni parola riceve inoltre un vettore di etichette morfologiche, con una componente per ciascuno dei 14 attributi di training: \texttt{Clitic}, \texttt{Definite}, \texttt{Degree}, \texttt{Foreign}, \texttt{Gender}, \texttt{Mood}, \texttt{NumType}, \texttt{Number}, \texttt{Person}, \texttt{Polarity}, \texttt{Poss}, \texttt{PronType}, \texttt{Tense} e \texttt{VerbForm}. Gli inventari dei valori sono derivati esclusivamente dal training e comprendono complessivamente 40 coppie attributo-valore.
+
+Ciascuna testa morfologica distingue i valori del proprio attributo e una classe tecnica \texttt{<NONE>}, che rappresenta l'assenza dell'attributo sulla parola. Per esempio, una parola con \texttt{Gender=Masc|Number=Sing} riceve i valori \texttt{Masc} e \texttt{Sing} nelle rispettive componenti e \texttt{<NONE>} per gli attributi assenti. Gli eventuali valori multipli dello stesso attributo sono ordinati e conservati come una singola etichetta composta, in accordo con la rappresentazione CoNLL-U~\cite{conllu}.
+
+Le annotazioni originali vengono conservate anche quando contengono attributi o valori estranei agli inventari appresi. Nel test compare, per esempio, \texttt{Typo=Yes}, assente dal training. Questo caso contribuisce alle metriche morfologiche e viene conteggiato come errore quando non \`e predetto. Nei tensori ausiliari destinati alla loss, i valori sconosciuti delle teste esistenti sono ricondotti a \texttt{<NONE>}; il calcolo delle metriche utilizza le annotazioni originali.
+
+\section{Preprocessing e allineamento}
+\label{sec:method-preprocessing}
+
+Si utilizza il tokenizer fast associato a \texttt{dbmdz/bert-base-italian-cased}, applicato alle parole presegmentate mediante \texttt{is\_split\_into\_words=True}. La funzione \texttt{word\_ids()} collega ciascuna subword alla parola di origine~\cite{hf}. Il vettore delle etichette UPOS e FEATS viene assegnato soltanto alla prima subword di ogni parola. Token speciali e subword successive ricevono il valore tecnico $-100$, utilizzato per escluderli dalla loss di classificazione e dalle metriche.
+
+Il padding \`e dinamico: ciascun batch viene esteso alla lunghezza della frase tokenizzata pi\`u lunga che contiene. Anche le posizioni di padding ricevono $-100$. Una maschera individua le prime subword; nella variante CRF gli score in queste posizioni vengono raccolti in sequenze continue di parole. La maschera identifica le posizioni valide, mentre i valori delle etichette vengono utilizzati come supervisione della funzione obiettivo.
+
+La lunghezza massima \`e fissata a 512 token, inclusi quelli speciali. Il preprocessing verifica che ogni parola abbia una sola posizione supervisionata e interrompe l'esecuzione quando una frase supera il limite. Le lunghezze massime osservate sono 332 token nel training, 110 nello sviluppo e 133 nel test. Tutte le frasi vengono quindi elaborate interamente.
+
+\section{Modelli e funzione obiettivo}
+\label{sec:method-objective}
+
+L'encoder condiviso produce le rappresentazioni utilizzate dalle 15 teste: una per UPOS e 14 per FEATS. Ogni testa applica una trasformazione lineare alla rappresentazione della prima subword dopo un dropout con probabilit\`a 0.1. Le classi vengono predette tramite lo score massimo; la corrispondente loss \`e la cross-entropy mediata sulle parole valide~\cite{hf}.
+
+Nella configurazione con CRF, gli score della testa UPOS costituiscono le emissioni di una catena lineare. Il training minimizza la log-verosimiglianza negativa della sequenza corretta, normalizzata sul numero di parole del batch mediante la riduzione \texttt{token\_mean}. La decodifica Viterbi seleziona la sequenza UPOS con score massimo~\cite{crf,pytorchcrf}. Le teste FEATS mantengono loss di classificazione e decodifica per parola.
+
+Indicando con $\mathcal A$ l'insieme dei 14 attributi morfologici, la loss complessiva \`e
+\begin{equation}
+ \mathcal L=\mathcal L_{\mathrm{UPOS}}+
+ \lambda\frac{1}{|\mathcal A|}\sum_{a\in\mathcal A}\mathcal L_a,
+ \qquad \lambda=1.
+\end{equation}
+La media delle loss FEATS mantiene il peso complessivo del compito morfologico indipendente dal numero delle teste. Il coefficiente $\lambda$ \`e fissato a 1 per tutte le configurazioni. Anche la classe \texttt{<NONE>} partecipa all'apprendimento, consentendo di predire quali attributi siano presenti su ciascuna parola.
+
+\section{Procedura di addestramento}
+\label{sec:method-training}
+
+L'ottimizzazione utilizza AdamW~\cite{adamw2019}, attraverso il \texttt{Trainer} di Transformers~\cite{hftrainer}. Le impostazioni comuni sono riportate nella Tabella~\ref{tab:training-settings}; i learning rate delle singole configurazioni sono indicati nella Tabella~\ref{tab:lr}. Il valore pi\`u elevato della variante congelata riguarda soltanto le teste, mentre nelle due varianti fine-tuned viene aggiornato anche l'encoder. I learning rate e il peso dei compiti rimangono fissi per tutti i seed.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lr}
+\toprule
+Parametro & Valore\\
+\midrule
+Epoche & 5\\
+Batch di training & 8 frasi\\
+Batch di valutazione & 16 frasi\\
+Weight decay & 0.01\\
+Warmup & 10\% dei passi\\
+Clipping della norma dei gradienti & 1.0\\
+$\beta_1$, $\beta_2$ di AdamW & 0.9, 0.999\\
+$\epsilon$ di AdamW & $10^{-8}$\\
+\bottomrule
+\end{tabular}
+\caption{Impostazioni di ottimizzazione condivise. Il learning rate cresce durante il warmup e decresce linearmente nei passi successivi.}
+\label{tab:training-settings}
+\end{table}
+
+Il seed viene impostato prima della creazione di ogni modello e controlla l'inizializzazione delle teste, l'ordine dei batch e le operazioni stocastiche. Nella variante congelata i parametri dell'encoder restano fissi. Nelle altre configurazioni vengono aggiornati congiuntamente encoder, teste e, quando presente, CRF.
+
+Le teste lineari sono inizializzate secondo la procedura BERT. Le transizioni iniziali, finali e interne del CRF vengono inizializzate uniformemente nell'intervallo $[-0.1,0.1]$, come previsto da \texttt{pytorch-crf}~\cite{pytorchcrf}. L'inizializzazione del modulo CRF \`e esplicitamente integrata nel caricamento del modello preaddestrato e verificata prima dell'addestramento. Un controllo durante l'esecuzione interrompe la prova in presenza di loss non finite.
+
+Quando CUDA \`e disponibile, viene utilizzata la precisione mista FP16. L'ambiente GPU del progetto impiega una NVIDIA GeForce RTX 4070 SUPER con 12 GB di memoria. La gestione della memoria libera i modelli al termine di ogni prova, consentendo l'esecuzione sequenziale delle configurazioni.
+
+\section{Selezione del checkpoint}
+\label{sec:method-selection}
+
+Al termine di ogni epoca il modello viene valutato sul development set e viene salvato un checkpoint. La selezione massimizza il punteggio
+\begin{equation}
+ S_{\mathrm{dev}}=\frac{1}{2}\left(
+ F_{1,\mathrm{UPOS}}^{\mathrm{macro,tot}}
+ +F_{1,\mathrm{FEATS}}^{\mathrm{macro,tot}}\right),
+\end{equation}
+dove entrambe le macro-F1 sono calcolate sugli inventari totali definiti nella sezione~\ref{sec:method-evaluation}. Questa scelta assegna lo stesso peso ai due compiti e rende la selezione sensibile anche alle classi meno frequenti.
+
+Il checkpoint con il valore massimo di $S_{\mathrm{dev}}$ viene ricaricato e salvato come modello della prova. La valutazione sul test viene eseguita dopo il completamento delle nove prove e delle rispettive selezioni sul development set. Ogni seed contribuisce alle statistiche finali della propria configurazione.
+
+\section{Valutazione}
+\label{sec:method-evaluation}
+
+Le predizioni vengono ricondotte alle parole originali attraverso l'allineamento delle prime subword. L'ordine delle parole e le etichette UPOS di riferimento sono verificati rispetto alle annotazioni dello split valutato. Tutte le configurazioni vengono confrontate sulle stesse unit\`a linguistiche.
+
+\subsection{Metriche UPOS}
+
+L'accuracy UPOS \`e la frazione di parole con categoria grammaticale corretta. Per ciascun tag $k$ si calcolano veri positivi, falsi positivi e falsi negativi, dai quali si ricavano precision, recall e F1. La macro-F1 \`e la media non pesata degli F1 delle categorie incluse:
+\begin{equation}
+ F_{1,k}=\frac{2TP_k}{2TP_k+FP_k+FN_k},
+ \qquad
+ F_1^{\mathrm{macro}}=\frac{1}{|C|}\sum_{k\in C}F_{1,k}.
+\end{equation}
+Le divisioni con denominatore nullo producono F1 pari a zero. La versione \emph{totale} considera i 17 tag del training; quella sulle classi \emph{presenti} considera i tag con supporto gold nello split valutato. Nel test questi ultimi sono 15, poich\'e \texttt{INTJ} e \texttt{PART} sono assenti. Le due convenzioni permettono di distinguere la copertura dell'inventario dalle prestazioni sulle categorie effettivamente osservate.
+
+\subsection{Metriche FEATS}
+
+L'accuracy FEATS principale richiede che l'intero insieme di coppie attributo-valore di una parola coincida con quello gold. Indicando con $G_i$ e $P_i$ gli insiemi corretto e predetto per la parola $i$, si calcola
+\begin{equation}
+ \operatorname{Acc}_{\mathrm{FEATS}}=
+ \frac{1}{N}\sum_{i=1}^{N}\mathbf 1[G_i=P_i].
+\end{equation}
+Anche gli insiemi vuoti partecipano alla valutazione. Una misura aggiuntiva, l'accuracy per attributo, conta le decisioni corrette sulle coppie parola-attributo e include l'assenza rappresentata da \texttt{<NONE>}. L'insieme degli attributi valutati comprende quelli del training e quelli eventualmente presenti nelle annotazioni gold o nelle predizioni dello split. Questa misura viene interpretata insieme all'accuracy dell'insieme completo, poich\'e molte decisioni riguardano attributi assenti.
+
+La macro-F1 FEATS tratta ciascuna coppia attributo-valore, per esempio \texttt{Gender=Fem}, come una classe. Veri positivi, falsi positivi e falsi negativi sono conteggiati sulla presenza della coppia negli insiemi delle singole parole. La classe tecnica \texttt{<NONE>} \`e esclusa da questa media, cos\`i che l'abbondanza di attributi assenti non domini la misura.
+
+La macro-F1 \emph{totale} comprende le 40 coppie del training e le eventuali ulteriori coppie osservate nelle annotazioni gold o nelle predizioni dello split valutato. La macro-F1 sulle classi \emph{presenti} comprende soltanto le coppie con supporto gold positivo. Le coppie sconosciute al modello rimangono quindi nel conteggio degli errori. Le metriche utilizzano le annotazioni morfologiche originali; la loss sul test non viene impiegata come indicatore di prestazione, poich\'e i tensori delle etichette rappresentano soltanto gli inventari delle teste.
+
+Si riporta inoltre l'accuracy congiunta, definita come la frazione di parole per le quali sono corretti sia UPOS sia l'intero insieme FEATS. I file per attributo permettono di esaminare separatamente accuracy e macro-F1 dei singoli attributi morfologici, includendo la rispettiva classe di assenza.
+
+\subsection{Aggregazione e analisi degli errori}
+
+Per ogni metrica vengono calcolate media e deviazione standard campionaria sui tre seed~\cite{seeds}. Le misure delle singole prove vengono conservate per rendere verificabili gli scarti tra configurazioni eseguite con lo stesso seed. I risultati numerici sono salvati come frazioni e visualizzati nelle tabelle in percentuale.
+
+L'analisi degli errori comprende le principali confusioni UPOS, sommate sui tre seed, e le coppie FEATS con il maggior numero complessivo di falsi positivi e falsi negativi. Per ogni prova sono disponibili anche precision, recall, F1 e supporto delle singole classi, insieme alle predizioni e agli errori a livello di parola.
+
+\section{Confronto con UDPipe 2}
+\label{sec:method-udpipe}
+
+Il riferimento esterno UPOS \`e il modello ufficiale \texttt{italian-isdt-ud-2.15-241121}, disponibile tramite il servizio UDPipe 2~\cite{udpipe}. Le predizioni di riferimento sono state ottenute fornendo le forme delle parole e i confini gold del test, con le annotazioni grammaticali rimosse dall'input. Il confronto verifica identit\`a del modello, hash del test e corrispondenza di indice di frase, indice di parola, forma ed etichetta gold.
+
+Sulle predizioni salvate vengono ricalcolate accuracy e macro-F1 UPOS con le stesse convenzioni adottate per BERT. Il punteggio UPOS F1 pubblicato per la tokenizzazione gold \`e 98,75\%~\cite{udpipe}. In presenza di un allineamento completo delle parole, tale F1 coincide numericamente con l'accuracy. La macro-F1 per categoria viene invece ricavata dalle predizioni individuali.
+
+Il confronto esterno riguarda UPOS, per il quale sono disponibili le predizioni di riferimento nel notebook. Le misure FEATS descrivono il confronto tra le tre configurazioni BERT. UDPipe 2 utilizza una propria architettura e rappresentazioni contestuali da BERT multilingue; i risultati confrontano pertanto sistemi completi nelle medesime condizioni di input~\cite{udpipe}.
+
+\section{Riproducibilit\`a e integrit\`a delle esecuzioni}
+\label{sec:method-reproducibility}
+
+Modello e tokenizer utilizzano la stessa revisione del checkpoint, identificata dal commit
+\begin{quote}
+\texttt{843e404d71f4c63972443e3463456f59024db278}.
+\end{quote}
+Gli hash SHA-256 dei file CoNLL-U identificano i dati effettivamente impiegati. I metadati registrano inventari, configurazioni, seed, iperparametri e versioni dei pacchetti. L'ambiente di esecuzione utilizza Python 3.13.3, PyTorch 2.6.0 con CUDA 12.4 e Transformers 4.46.3; le versioni effettive sono riportate nei file dell'esperimento.
+
+Gli artefatti vengono raccolti in \path{outputs/bert_upos_feats_comparison_v1}, con una cartella per ogni configurazione e seed. Ogni prova salva il modello selezionato, la cronologia di training, i metadati, le predizioni per parola, le metriche complessive, le misure per tag e attributo e i casi errati. I riepiloghi aggregati vengono ricostruiti dalle prove della campagna corrente.
+
+Il riuso di una prova completata richiede la corrispondenza della configurazione salvata. Per i modelli CRF viene verificata anche la versione della procedura di inizializzazione; i checkpoint precedenti vengono archiviati prima di ripetere la prova con l'inizializzazione corretta. Questo controllo mantiene distinti i risultati delle esecuzioni valide dagli artefatti prodotti con parametri iniziali incompatibili. Hardware, precisione numerica e versioni delle librerie costituiscono ulteriori condizioni per riprodurre l'esperimento.
+
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{\bibname}
+\bibliographystyle{unsrturl}
+{\small\raggedright
+\bibliography{references}
+}
+\end{document}

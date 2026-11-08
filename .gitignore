@@ -1,0 +1,40 @@
+# Python and notebooks
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Downloaded data, experiment outputs, and local copies
+/data/
+/outputs/
+/backups/
+/tmp/
+/logs/
+*.log
+
+# LaTeX build files and generated archives
+/report/tmp/
+/report/logs/
+/report/*.aux
+/report/*.bbl
+/report/*.bcf
+/report/*.blg
+/report/*.fdb_latexmk
+/report/*.fls
+/report/*.out
+/report/*.run.xml
+/report/*.synctex.gz
+/report/*.toc
+/report/*.lof
+/report/*.lot
+/report/*.zip
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
