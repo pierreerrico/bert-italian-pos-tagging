@@ -1,6 +1,6 @@
 ﻿import urllib.request,hashlib,json
 from pathlib import Path
-root=Path(__file__).resolve().parent
+root=Path(__file__).resolve().parents[2]
 out=root/'outputs/references/isdt_commit_comparison'
 out.mkdir(parents=True,exist_ok=True)
 def sentences(data):

@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 KEYS = ('sentence_index', 'word_index', 'word', 'true_label')
 
 def read_csv(path):

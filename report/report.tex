@@ -58,7 +58,7 @@
 
 Il progetto affronta il fine-tuning di BERT italiano per il PoS tagging sul benchmark UD Italian-ISDT 2.15, con l'obiettivo di valutarne le prestazioni rispetto a UDPipe 2 e ai risultati della letteratura. Il compito principale consiste nella predizione dei tag UPOS a partire da parole e confini di frase gold, mantenendo gli split ufficiali del corpus e confrontando i sistemi mediante accuracy, macro-F1 e analisi degli errori. Per approfondire il contributo dell'adattamento del modello e della decodifica strutturata, gli esperimenti comprendono un encoder congelato, BERT fine-tuned e una variante con CRF, valutati su tre seed sia sul solo UPOS sia dopo l'estensione alla predizione delle caratteristiche morfologiche \texttt{FEATS}.
 
-BERT fine-tuned raggiunge un'accuracy UPOS di circa il 98,81\%, rispetto al 98,75\% di UDPipe, e dopo l'estensione morfologica arriva al 98,84\%, con una macro-F1 sulle classi presenti del 95,57\%. Questi risultati sono in accordo con la letteratura e indicano che il fine-tuning costituisce una soluzione efficace per il compito, mentre i confronti interni mostrano benefici del CRF soprattutto sulle categorie rare. Anche la predizione morfologica raggiunge un'accuracy esatta vicina a quella del riferimento, ma la macro-F1 sulle coppie attributo-valore evidenzia maggiori difficoltà sulle caratteristiche poco frequenti; l'analisi degli errori permette quindi di affiancare alla correttezza complessiva una lettura delle prestazioni sulle singole classi.
+BERT fine-tuned raggiunge prestazioni UPOS in linea con i risultati della letteratura e valori di accuracy e macro-F1 vicini a quelli di UDPipe 2. L'estensione morfologica si accompagna a un miglioramento delle prestazioni UPOS e consente di ottenere risultati confrontabili con il riferimento anche nella predizione delle caratteristiche \texttt{FEATS}. I confronti interni mostrano il contributo del fine-tuning rispetto all'encoder congelato e benefici del CRF soprattutto sulle categorie rare. L'analisi degli errori evidenzia comunque difficoltà sulle caratteristiche poco frequenti e permette di affiancare alla correttezza complessiva una lettura delle prestazioni sulle singole classi.
 
 \newpage
 
@@ -407,7 +407,7 @@ Il notebook di implementazione, che raccoglie preparazione dei dati, addestramen
 \toprule
 Parametro & Valore\\
 \midrule
-Epoche per fase & 5\\
+Epoche per fase & 10\\
 Batch di training / valutazione & 8 / 16 frasi\\
 Weight decay & 0.01\\
 Warmup & 10\% dei passi\\
@@ -418,16 +418,16 @@ Clipping della norma dei gradienti & 1.0\\
 \label{tab:training-settings}
 \end{table}
 
-La seconda fase avvia una nuova ottimizzazione AdamW e un nuovo scheduler per altre cinque epoche. Le variazioni UPOS vanno quindi interpretate considerando l'effetto congiunto dell'estensione multitask, della prosecuzione dell'addestramento e del criterio di selezione.
+La seconda fase avvia una nuova ottimizzazione AdamW e un nuovo scheduler per altre dieci epoche. Le variazioni UPOS vanno quindi interpretate considerando l'effetto congiunto dell'estensione multitask, della prosecuzione dell'addestramento e del criterio di selezione.
 
 L'esecuzione su NVIDIA GeForce RTX 4070 SUPER, con 12 GB di memoria, utilizza precisione mista FP16 per accelerare il training e ridurre l'occupazione di memoria.
 
 \section{Selezione del checkpoint}
 \label{sec:method-selection}
 
-Al termine di ogni epoca il modello viene valutato sul development set e, nella prima fase, viene selezionato il checkpoint che massimizza la macro-F1 UPOS sui 17 tag del training. Nella seconda fase si utilizza invece il punteggio $S_{\mathrm{dev}}=(F_{\mathrm U}+F_{\mathrm F})/2$, dove $F_{\mathrm U}$ indica la stessa macro-F1 UPOS e $F_{\mathrm F}$ la macro-F1 FEATS sulle coppie presenti nel development, escludendo \texttt{<NONE>}. La media assegna uguale peso ai due compiti nella selezione. Nella seconda fase viene salvato un checkpoint al termine di ciascuna delle cinque epoche; per la valutazione finale si utilizza quello con il punteggio migliore sul development set.
+Al termine di ogni epoca il modello viene valutato sul development set e, nella prima fase, viene selezionato il checkpoint che massimizza la macro-F1 UPOS sui 17 tag del training. Nella seconda fase si utilizza invece il punteggio $S_{\mathrm{dev}}=(F_{\mathrm U}+F_{\mathrm F})/2$, dove $F_{\mathrm U}$ indica la stessa macro-F1 UPOS e $F_{\mathrm F}$ la macro-F1 FEATS sulle coppie presenti nel development, escludendo \texttt{<NONE>}. La media assegna uguale peso ai due compiti nella selezione. Nella seconda fase viene salvato un checkpoint al termine di ciascuna delle dieci epoche; per la valutazione finale si utilizza quello con il punteggio migliore sul development set.
 
-La Figura~\ref{fig:training-dynamics} mostra che la loss di training continua a diminuire, mentre quella sul development si stabilizza: gli aggiornamenti successivi migliorano quindi soprattutto l'adattamento ai dati di addestramento. Nella fase congiunta, la macro-F1 UPOS sul development diminuisce mentre cresce quella \texttt{FEATS}; il punteggio medio dei due compiti aumenta perché il miglioramento morfologico compensa la riduzione su UPOS, spiegando la selezione di checkpoint nelle ultime epoche.
+La Figura~\ref{fig:training-dynamics} mostra che la loss di training continua a diminuire, mentre quella sul development, dopo un calo iniziale, torna a crescere: prolungare l'addestramento non garantisce quindi una migliore generalizzazione. Nella prima fase i checkpoint selezionati per BERT fine-tuned corrispondono alle epoche 3, 4 e 5, rispettivamente per i seed 42, 123 e 456. Nella fase congiunta la macro-F1 \texttt{FEATS} cresce soprattutto nelle prime epoche e poi tende a stabilizzarsi, mentre quella UPOS oscilla; il punteggio medio dei due compiti seleziona le epoche 6, 5 e 10. La selezione sul development permette pertanto di utilizzare checkpoint diversi dall'ultimo, pur mantenendo un budget di dieci epoche per fase.
 
 \begin{figure}[htbp]
 \centering
@@ -502,7 +502,7 @@ La valutazione del modello fine-tuned per UPOS è incentrata sul confronto con U
 \section{Confronto UPOS con UDPipe 2}
 \label{sec:results-upos-comparison}
 
-BERT fine-tuned sul solo compito UPOS raggiunge un'accuracy del $98{,}81\pm0{,}09\%$, rispetto al 98,75\% di UDPipe 2. Dopo l'estensione congiunta a UPOS e \texttt{FEATS}, la stessa architettura raggiunge il $98{,}84\pm0{,}05\%$. La Figura~\ref{fig:upos-reference-comparison} evidenzia il confronto sulle due metriche principali; il confronto utilizza le stesse parole e gli stessi confini di frase gold, con metriche ricalcolate dalle predizioni allineate utilizzando le medesime convenzioni per tutti i sistemi, secondo il protocollo della Sezione~\ref{sec:method-udpipe}.
+BERT fine-tuned sul solo compito UPOS raggiunge un'accuracy del $98{,}74\pm0{,}11\%$, rispetto al 98,75\% di UDPipe 2. Dopo l'estensione congiunta a UPOS e \texttt{FEATS}, la stessa architettura raggiunge il $98{,}86\pm0{,}09\%$. La Figura~\ref{fig:upos-reference-comparison} evidenzia il confronto sulle due metriche principali; il confronto utilizza le stesse parole e gli stessi confini di frase gold, con metriche ricalcolate dalle predizioni allineate utilizzando le medesime convenzioni per tutti i sistemi, secondo il protocollo della Sezione~\ref{sec:method-udpipe}.
 
 \begin{figure}[htbp]
 \centering
@@ -524,26 +524,26 @@ UDPipe 2 (UD 2.15) & $98{,}75$ & $94{,}48$ & $83{,}37$\\
 \midrule
 \addlinespace[2pt]
 \multicolumn{4}{l}{\textbf{Fase 1: UPOS}}\\
-BERT congelato & $96{,}36\pm0{,}07$ & $89{,}61\pm0{,}26$ & $79{,}07\pm0{,}23$\\
-\textbf{BERT fine-tuned} & $98{,}81\pm0{,}09$ & $93{,}91\pm0{,}47$ & $82{,}86\pm0{,}42$\\
-BERT + CRF & $98{,}79\pm0{,}06$ & $94{,}63\pm0{,}43$ & $83{,}50\pm0{,}38$\\
+BERT congelato & $96{,}53\pm0{,}21$ & $90{,}23\pm0{,}30$ & $79{,}62\pm0{,}27$\\
+\textbf{BERT fine-tuned} & $98{,}74\pm0{,}11$ & $94{,}38\pm1{,}07$ & $83{,}27\pm0{,}95$\\
+BERT + CRF & $98{,}77\pm0{,}09$ & $94{,}86\pm1{,}31$ & $83{,}70\pm1{,}16$\\
 \midrule
 \addlinespace[2pt]
 \multicolumn{4}{l}{\textbf{Fase 2: UPOS + \texttt{FEATS}}}\\
-BERT congelato & $96{,}60\pm0{,}05$ & $89{,}94\pm0{,}26$ & $79{,}36\pm0{,}23$\\
-\textbf{BERT fine-tuned} & $98{,}84\pm0{,}05$ & $95{,}57\pm0{,}56$ & $84{,}33\pm0{,}50$\\
-BERT + CRF & $98{,}82\pm0{,}05$ & $95{,}49\pm0{,}64$ & $84{,}25\pm0{,}57$\\
+BERT congelato & $96{,}76\pm0{,}03$ & $90{,}77\pm0{,}37$ & $80{,}09\pm0{,}32$\\
+\textbf{BERT fine-tuned} & $98{,}86\pm0{,}09$ & $95{,}85\pm0{,}46$ & $84{,}57\pm0{,}41$\\
+BERT + CRF & $98{,}79\pm0{,}07$ & $95{,}66\pm0{,}50$ & $84{,}41\pm0{,}44$\\
 \bottomrule
 \end{tabular}
 \caption{Risultati UPOS sul medesimo test UD Italian-ISDT 2.15 con segmentazione gold, espressi in percentuale come media $\pm$ deviazione standard. Per UDPipe si riporta un'unica esecuzione; la macro-F1 sulle classi presenti utilizza 15 tag, quella totale tutti i 17 tag.}
 \label{tab:results-upos}
 \end{table}
 
-Il margine medio di accuracy rispetto a UDPipe è di circa 0,06 punti percentuali nella prima fase e 0,09 nella seconda. UDPipe commette 130 errori, mentre BERT fine-tuned della seconda fase ne commette 127, 118 e 117 nei tre seed. La differenza corrisponde quindi a poche parole su oltre diecimila e viene esaminata anche attraverso gli intervalli del confronto appaiato.
+Lo scarto medio di accuracy rispetto a UDPipe è di circa $-0{,}01$ punti percentuali nella prima fase e $+0{,}11$ nella seconda. UDPipe commette 130 errori, mentre BERT fine-tuned della seconda fase ne commette 123, 125 e 108 nei tre seed. La differenza corrisponde quindi a poche parole su oltre diecimila e viene esaminata anche attraverso gli intervalli del confronto appaiato.
 
-La macro-F1 sulle 15 classi presenti rende più articolato il confronto: nella prima fase BERT fine-tuned ottiene il 93,91\%, contro il 94,48\% di UDPipe, pur avendo un'accuracy media leggermente maggiore. Dopo la fase congiunta raggiunge il 95,57\%, con uno scarto medio di 1,09 punti rispetto al riferimento. Circa 0,93 punti di questo scarto provengono dalla categoria \texttt{X}, presente soltanto 13 volte, il cui F1 passa dal 37,50\% di UDPipe al 51,48\% medio di BERT. Il vantaggio macro richiede quindi cautela rispetto alle classi rare. La macro-F1 sui 17 tag segue lo stesso andamento, con la differenza di scala dovuta alle due classi assenti dal test descritta nella Sottosezione~\ref{subsec:method-upos-metrics}.
+La macro-F1 sulle 15 classi presenti rende più articolato il confronto: nella prima fase BERT fine-tuned ottiene il 94,38\%, contro il 94,48\% di UDPipe, con accuracy medie quasi coincidenti. Dopo la fase congiunta raggiunge il 95,85\%, con uno scarto medio di 1,37 punti rispetto al riferimento. Circa 1,16 punti di questo scarto provengono dalla categoria \texttt{X}, presente soltanto 13 volte, il cui F1 passa dal 37,50\% di UDPipe al 54,92\% medio di BERT. Il vantaggio macro richiede quindi cautela rispetto alle classi rare. La macro-F1 sui 17 tag segue lo stesso andamento, con la differenza di scala dovuta alle due classi assenti dal test descritta nella Sottosezione~\ref{subsec:method-upos-metrics}.
 
-La Tabella~\ref{tab:upos-paired-bootstrap} quantifica l'incertezza degli scarti di BERT fine-tuned rispetto a UDPipe, usando il ricampionamento per frase descritto nella Sezione~\ref{sec:method-udpipe}. Gli intervalli di accuracy e macro-F1 comprendono lo zero per tutti i seed in entrambe le fasi: sul test disponibile, quindi, la direzione dei piccoli scarti osservati non risulta stabile rispetto al ricampionamento. Questo esito non dimostra equivalenza tra i sistemi; gli intervalli più ampi della macro-F1 riflettono anche il peso delle categorie con pochi esempi.
+La Tabella~\ref{tab:upos-paired-bootstrap} quantifica l'incertezza degli scarti di BERT fine-tuned rispetto a UDPipe, usando il ricampionamento per frase descritto nella Sezione~\ref{sec:method-udpipe}. Gli intervalli di macro-F1 comprendono lo zero per tutti i seed in entrambe le fasi. Per l'accuracy, soltanto il seed 456 della fase congiunta presenta un intervallo interamente positivo, pari a $[+0{,}04; +0{,}39]$ punti percentuali. Il vantaggio sul test non è quindi uniforme fra seed e metriche; gli intervalli più ampi della macro-F1 riflettono anche il peso delle categorie con pochi esempi. Questi intervalli marginali non costituiscono una dimostrazione globale di superiorità o equivalenza tra i sistemi.
 
 \begin{table}[!htb]
 \centering\small
@@ -552,14 +552,14 @@ La Tabella~\ref{tab:upos-paired-bootstrap} quantifica l'incertezza degli scarti 
 Seed & $\Delta$ accuracy [IC 95\%] & $\Delta$ macro-F1 presenti [IC 95\%]\\
 \midrule
 \multicolumn{3}{l}{\textbf{Fase 1: UPOS}}\\
-42 & $-0{,}05\;[-0{,}22; +0{,}12]$ & $-0{,}95\;[-4{,}20; +1{,}35]$\\
-123 & $+0{,}12\;[-0{,}06; +0{,}31]$ & $-0{,}04\;[-1{,}88; +1{,}60]$\\
-456 & $+0{,}09\;[-0{,}08; +0{,}26]$ & $-0{,}72\;[-2{,}01; +0{,}37]$\\
+42 & $-0{,}13\;[-0{,}36; +0{,}07]$ & $-0{,}79\;[-3{,}08; +1{,}17]$\\
+123 & $+0{,}06\;[-0{,}16; +0{,}28]$ & $-0{,}66\;[-4{,}08; +1{,}70]$\\
+456 & $+0{,}04\;[-0{,}16; +0{,}23]$ & $+1{,}13\;[-1{,}10; +3{,}76]$\\
 \midrule
 \multicolumn{3}{l}{\textbf{Fase 2: UPOS + \texttt{FEATS}}}\\
-42 & $+0{,}03\;[-0{,}15; +0{,}22]$ & $+0{,}95\;[-1{,}81; +3{,}86]$\\
-123 & $+0{,}12\;[-0{,}08; +0{,}31]$ & $+0{,}60\;[-3{,}35; +4{,}55]$\\
-456 & $+0{,}12\;[-0{,}06; +0{,}32]$ & $+1{,}70\;[-0{,}28; +4{,}66]$\\
+42 & $+0{,}07\;[-0{,}12; +0{,}25]$ & $+0{,}89\;[-1{,}54; +4{,}03]$\\
+123 & $+0{,}05\;[-0{,}16; +0{,}25]$ & $+1{,}40\;[-1{,}54; +4{,}40]$\\
+456 & $+0{,}21\;[+0{,}04; +0{,}39]$ & $+1{,}81\;[-0{,}17; +4{,}75]$\\
 \bottomrule
 \end{tabular}
 \caption{Differenze UPOS di BERT fine-tuned rispetto a UDPipe, in punti percentuali, e intervalli bootstrap appaiati al 95\% da 10\,000 ricampionamenti di frasi. Ogni seed viene valutato separatamente; gli intervalli sono marginali, senza correzione per confronti multipli.}
@@ -590,7 +590,7 @@ LLM con LoRA, quattro modelli~\cite{matsuda2026} & $98{,}3$--$98{,}8$ & F1 UPOS;
 \label{tab:literature}
 \end{table}
 
-Le accuracy del modello sviluppato, pari al 98,81\% sul solo UPOS e al 98,84\% dopo l'estensione a \texttt{FEATS}, sono in accordo con i risultati riportati per i Transformer italiani. Tamburini~\cite{tamburini2020} ottiene il 98,78\% con UmBERTo su UD-ISDT 2.5; il repository di Schweter~\cite{schweter2020} riporta il 98,84\% per BERT italiano \textit{cased}, utilizzato anche in questo progetto, e il 98,90\% per la variante XXL. Il repository ufficiale di UmBERTo~\cite{umberto2020} documenta un valore più alto, pari al 98,977\%.
+Le accuracy del modello sviluppato, pari al 98,74\% sul solo UPOS e al 98,86\% dopo l'estensione a \texttt{FEATS}, sono in accordo con i risultati riportati per i Transformer italiani. Tamburini~\cite{tamburini2020} ottiene il 98,78\% con UmBERTo su UD-ISDT 2.5; il repository di Schweter~\cite{schweter2020} riporta il 98,84\% per BERT italiano \textit{cased}, utilizzato anche in questo progetto, e il 98,90\% per la variante XXL. Il repository ufficiale di UmBERTo~\cite{umberto2020} documenta un valore più alto, pari al 98,977\%.
 
 Le differenze architetturali riguardano anche il modo in cui viene utilizzata l'informazione morfologica. Nel precedente sistema di Tamburini~\cite{tamburini2016}, valutato sui benchmark EVALITA, una rete BiLSTM-CRF riceve in ingresso rappresentazioni lessicali arricchite con le analisi prodotte da AnIta, un analizzatore morfologico per l'italiano. Nel presente progetto, invece, la morfologia viene appresa come compito supervisionato aggiuntivo mediante le teste \texttt{FEATS}, senza fornire al modello le analisi di uno strumento esterno.
 
@@ -603,7 +603,7 @@ Nel complesso, il modello sviluppato raggiunge prestazioni in linea con la lette
 \section{Confronti interni tra le configurazioni BERT}
 \label{sec:results-bert-comparison}
 
-I confronti interni mostrano il contributo del fine-tuning: nella prima fase l'accuracy passa dal 96,36\% dell'encoder congelato al 98,81\% di BERT fine-tuned. L'aggiunta del CRF mantiene un'accuracy simile e migliora la macro-F1 sulle classi presenti, con un beneficio legato soprattutto alla categoria rara \texttt{X}, discussa nella Sezione~\ref{sec:results-errors}. Il ciclo di addestramento richiede in media 6,75 minuti per BERT fine-tuned e 10,71 minuti con CRF, sulla stessa GPU e includendo valutazioni e salvataggi.
+I confronti interni mostrano il contributo del fine-tuning: nella prima fase l'accuracy passa dal 96,53\% dell'encoder congelato al 98,74\% di BERT fine-tuned. L'aggiunta del CRF mantiene un'accuracy simile e migliora la macro-F1 sulle classi presenti, con un contributo della categoria rara \texttt{X}, discusso nella Sezione~\ref{sec:results-errors}. Le durate registrate nella prima fase sono in media 38,95 minuti per BERT fine-tuned e 21,42 minuti con CRF, includendo valutazioni e salvataggi. La forte variabilità delle esecuzioni di BERT fine-tuned, da 13,32 a 77,68 minuti sulla stessa GPU, impedisce però di attribuire questi scarti alla sola architettura. Nella fase congiunta le durate medie sono rispettivamente 21,07 e 22,16 minuti.
 
 La Figura~\ref{fig:upos-stage-changes} riassume il passaggio alla seconda fase: l'incremento medio di accuracy rimane contenuto, mentre la macro-F1 sulle classi presenti mostra un miglioramento più evidente, soprattutto per BERT fine-tuned.
 
@@ -635,40 +635,40 @@ Sistema & \shortstack{Accuracy\\\texttt{FEATS}} & \shortstack{Macro-F1\\presenti
 \midrule
 UDPipe 2 & $98{,}29$ & $90{,}04$ & $97{,}94$ & $83{,}45$\\
 \midrule
-BERT congelato & $87{,}68\pm0{,}05$ & $82{,}45\pm0{,}27$ & $86{,}48\pm0{,}07$ & $76{,}42\pm0{,}25$\\
-\textbf{BERT fine-tuned} & $98{,}31\pm0{,}05$ & $88{,}52\pm0{,}30$ & $97{,}91\pm0{,}09$ & $82{,}04\pm0{,}28$\\
-BERT + CRF & $98{,}25\pm0{,}09$ & $88{,}37\pm0{,}23$ & $97{,}82\pm0{,}13$ & $81{,}90\pm0{,}21$\\
+BERT congelato & $87{,}98\pm0{,}12$ & $83{,}67\pm0{,}34$ & $86{,}86\pm0{,}11$ & $77{,}54\pm0{,}31$\\
+\textbf{BERT fine-tuned} & $98{,}45\pm0{,}12$ & $90{,}23\pm1{,}04$ & $98{,}05\pm0{,}17$ & $83{,}63\pm0{,}96$\\
+BERT + CRF & $98{,}46\pm0{,}18$ & $90{,}17\pm1{,}41$ & $98{,}02\pm0{,}16$ & $83{,}57\pm1{,}30$\\
 \bottomrule
 \end{tabular}
 \caption{Risultati morfologici sul test UD Italian-ISDT 2.15 con segmentazione gold. Per BERT si riportano media $\pm$ deviazione standard sui tre seed; per UDPipe un'unica esecuzione. Tutti i valori sono percentuali e ricalcolati con le stesse convenzioni. Le macro-F1 considerano 41 coppie attributo-valore complessive e 38 presenti nel test.}
 \label{tab:results-feats}
 \end{table}
 
-Come mostra la Figura~\ref{fig:feats-reference-comparison}, BERT fine-tuned e UDPipe raggiungono un'accuracy esatta \texttt{FEATS} molto vicina, mentre la macro-F1 sulle coppie presenti favorisce UDPipe. Quasi tutto il divario macro dipende da una coppia con tre occorrenze, come approfondito nella Sezione~\ref{sec:results-errors}; questo risultato descrive anche la sensibilità della metrica alle classi rare.
+Come mostra la Figura~\ref{fig:feats-reference-comparison}, BERT fine-tuned raggiunge valori medi lievemente superiori a UDPipe sia per l'accuracy esatta \texttt{FEATS} sia per la macro-F1 sulle coppie presenti, con scarti rispettivamente di circa 0,16 e 0,19 punti percentuali. La macro-F1 presenta però una deviazione standard di 1,04 punti sui tre seed, maggiore dello scarto medio rispetto al riferimento; non emerge quindi un vantaggio uniforme nelle singole esecuzioni. Le caratteristiche rare contribuiscono a questa variabilità, come approfondito nella Sezione~\ref{sec:results-errors}.
 
-Nei confronti interni, l'accuracy \texttt{FEATS} passa dall'87,68\% del modello congelato al 98,31\% di BERT fine-tuned e la macro-F1 sulle coppie presenti dall'82,45\% all'88,52\%. Gli scarti tra i due modelli fine-tuned rimangono contenuti: la differenza media di accuracy \texttt{FEATS} è di 0,06 punti e il CRF risulta lievemente migliore in due seed su tre, pertanto l'ordinamento delle medie richiede cautela. Inoltre, le teste \texttt{FEATS} sono lineari in entrambe le architetture, mentre il CRF agisce soltanto su UPOS; le differenze morfologiche riflettono quindi l'apprendimento congiunto delle teste e dell'encoder condiviso, oltre alla selezione del checkpoint.
+Nei confronti interni, l'accuracy \texttt{FEATS} passa dall'87,98\% del modello congelato al 98,45\% di BERT fine-tuned e la macro-F1 sulle coppie presenti dall'83,67\% al 90,23\%. Gli scarti tra i due modelli fine-tuned rimangono contenuti: il CRF presenta un'accuracy \texttt{FEATS} media maggiore di circa 0,01 punti e risulta lievemente migliore in due seed su tre, mentre la macro-F1 media favorisce di circa 0,06 punti BERT senza CRF. L'ordinamento delle medie richiede quindi cautela. Inoltre, le teste \texttt{FEATS} sono lineari in entrambe le architetture, mentre il CRF agisce soltanto su UPOS; le differenze morfologiche riflettono l'apprendimento congiunto delle teste e dell'encoder condiviso, oltre alla selezione del checkpoint.
 
-L'accuracy sulle singole decisioni parola-attributo raggiunge il 99,83\%, ma comprende numerose decisioni di assenza. Anche l'accuracy esatta include le 4\,055 parole con insieme gold vuoto, mentre la macro-F1 attribuisce uguale peso alle coppie frequenti e rare: queste differenze spiegano la distanza tra le misure.
+L'accuracy sulle singole decisioni parola-attributo raggiunge il 99,85\%, ma comprende numerose decisioni di assenza. Anche l'accuracy esatta include le 4\,055 parole con insieme gold vuoto, mentre la macro-F1 attribuisce uguale peso alle coppie frequenti e rare: queste differenze spiegano la distanza tra le misure.
 
-La selezione congiunta individua checkpoint delle epoche 4--5 per BERT fine-tuned e 3--5 per BERT + CRF, mentre il modello congelato seleziona sempre la quinta epoca; la deviazione standard dell'accuracy \texttt{FEATS} rimane entro 0,10 punti in tutte le architetture.
+La selezione congiunta individua checkpoint delle epoche 5--10 per BERT fine-tuned e 5--8 per BERT + CRF, mentre il modello congelato seleziona le epoche 8--10. La deviazione standard dell'accuracy \texttt{FEATS} è pari a 0,12 punti per BERT fine-tuned e a 0,18 per BERT + CRF; quella della macro-F1 sulle coppie presenti raggiunge rispettivamente 1,04 e 1,41 punti, evidenziando una maggiore sensibilità ai seed della misura per categoria.
 
 \section{Analisi degli errori}
 \label{sec:results-errors}
 
-Le principali confusioni UPOS coinvolgono nomi comuni, nomi propri e aggettivi: sommando le tre esecuzioni di BERT fine-tuned della prima fase, si osservano 46 assegnazioni da \texttt{NOUN} a \texttt{PROPN}, 38 nella direzione opposta e 29 da \texttt{NOUN} a \texttt{ADJ}. La Figura~\ref{fig:upos-error-confusions} mostra che questi scambi restano prevalenti dopo l'estensione morfologica.
+Le principali confusioni UPOS coinvolgono nomi comuni, nomi propri e aggettivi: sommando le tre esecuzioni di BERT fine-tuned della prima fase, si osservano 52 assegnazioni da \texttt{NOUN} a \texttt{PROPN}, 36 nella direzione opposta e 33 da \texttt{NOUN} a \texttt{ADJ}. La Figura~\ref{fig:upos-error-confusions} mostra che questi scambi restano prevalenti dopo l'estensione morfologica.
 
-La categoria \texttt{X}, presente soltanto 13 volte, chiarisce la sensibilità della macro-F1: nella prima fase il suo F1 medio passa dal 26,36\% con classificazione lineare al 37,37\% con CRF, spiegando quasi interamente il vantaggio macro della seconda architettura. Dopo la fase congiunta, i valori raggiungono rispettivamente il 51,48\% e il 53,08\%, contribuendo agli incrementi della media per categoria a fronte di variazioni ridotte dell'accuracy.
+La categoria \texttt{X}, presente soltanto 13 volte, chiarisce la sensibilità della macro-F1: nella prima fase il suo F1 medio passa dal 37,63\% con classificazione lineare al 41,67\% con CRF, contribuendo per circa 0,27 punti al vantaggio macro complessivo di 0,48 punti della seconda architettura. Dopo la fase congiunta, i valori raggiungono rispettivamente il 54,92\% e il 53,87\%, contribuendo agli incrementi della media per categoria a fronte di variazioni ridotte dell'accuracy.
 
-Per \texttt{FEATS}, gli errori in valore assoluto si concentrano soprattutto su numero e genere, che hanno elevato supporto: e.g., \texttt{Number=Sing} accumula 119 falsi positivi e 108 falsi negativi nelle tre prove di BERT fine-tuned, pur mantenendo un F1 medio del 99,07\%. Restano più difficili alcune coppie rare, tra cui \texttt{Foreign=Yes}, con 11 occorrenze e F1 medio del 29,30\%, mentre \texttt{Degree=Abs} e \texttt{PronType=Exc}, presenti rispettivamente tre volte e una, ricevono F1 nullo in tutte le configurazioni BERT. Anche l'unica occorrenza di \texttt{Typo=Yes} resta errata, poiché la coppia è assente dall'inventario di training.
+Per \texttt{FEATS}, gli errori in valore assoluto si concentrano soprattutto su numero e genere, che hanno elevato supporto: e.g., \texttt{Number=Sing} accumula 105 falsi positivi e 101 falsi negativi nelle tre prove di BERT fine-tuned, pur mantenendo un F1 medio del 99,16\%. Restano più difficili alcune coppie rare, tra cui \texttt{Foreign=Yes}, con 11 occorrenze e F1 medio del 38,10\%, e \texttt{Degree=Abs}, con tre occorrenze e F1 medio del 38,89\%. Quest'ultima presenta valori del 50,00\%, 0,00\% e 66,67\% nei tre seed, mostrando come poche decisioni possano incidere sulla macro-F1. \texttt{PronType=Exc}, presente una sola volta, riceve F1 nullo in tutte le configurazioni BERT; anche l'unica occorrenza di \texttt{Typo=Yes} resta errata, poiché la coppia è assente dall'inventario di training.
 
-UDPipe riconosce due delle tre occorrenze di \texttt{Degree=Abs}, con un F1 del 57,14\%. Questa coppia spiega circa 1,50 dei 1,52 punti di vantaggio macro su BERT fine-tuned, mentre le differenze sulle altre coppie quasi si compensano.
+UDPipe riconosce due delle tre occorrenze di \texttt{Degree=Abs}, con un F1 del 57,14\%. Su questa coppia supera BERT fine-tuned di 18,25 punti di F1, equivalenti a circa 0,48 punti di macro-F1 sulle 38 coppie presenti. Le differenze sulle altre coppie compensano questo contributo e portano BERT a una macro-F1 media complessiva lievemente maggiore del riferimento.
 
 \begingroup
 \setlength{\intextsep}{6pt}
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.62\textwidth]{figures/upos_error_confusions.pdf}
-\caption{Confusioni UPOS di BERT fine-tuned: righe gold, colonne predette. Ogni cella conta gli errori aggregati sui tre seed; il blu più scuro indica più errori, ad esempio 42 da \texttt{NOUN} a \texttt{PROPN}. La diagonale delle predizioni corrette è esclusa.}
+\caption{Confusioni UPOS di BERT fine-tuned: righe gold, colonne predette. Ogni cella conta gli errori aggregati sui tre seed; il blu più scuro indica più errori, ad esempio 45 da \texttt{NOUN} a \texttt{PROPN}. La diagonale delle predizioni corrette è esclusa.}
 \label{fig:upos-error-confusions}
 \end{figure}
 \endgroup
@@ -676,7 +676,7 @@ UDPipe riconosce due delle tre occorrenze di \texttt{Degree=Abs}, con un F1 del 
 \subsection{Esempi contestuali}
 \label{subsec:results-contextual-examples}
 
-La Tabella~\ref{tab:contextual-errors} raccoglie quattro casi illustrativi, con predizioni BERT identiche nei tre seed. Comprendono successi ed errori di entrambi i sistemi e un'omissione morfologica, senza costituire un campione rappresentativo.
+La Tabella~\ref{tab:contextual-errors} raccoglie quattro casi illustrativi, riportando le predizioni di BERT fine-tuned della fase congiunta per il seed 123. Comprendono successi ed errori di entrambi i sistemi e un'omissione morfologica, senza costituire un campione rappresentativo. Le predizioni non sono sempre identiche fra seed: con il seed 42 BERT riconosce correttamente \emph{Ministro} come \texttt{PROPN} e \emph{conclusa} come \texttt{ADJ}; inoltre, i seed 42 e 456 predicono correttamente \texttt{Degree=Abs} per \emph{Recentissima}.
 
 \begin{table}[H]
 \centering\small
@@ -684,7 +684,7 @@ La Tabella~\ref{tab:contextual-errors} raccoglie quattro casi illustrativi, con 
 \renewcommand{\arraystretch}{1.05}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}Xllll}
 \toprule
-Estratto & Campo & Gold & UDPipe & BERT\\
+Estratto & Campo & Gold & UDPipe & BERT (123)\\
 \midrule
 Il Presidente \textbf{eletto} nomina e revoca i componenti della Giunta. & UPOS & \texttt{ADJ} & \texttt{VERB} & \texttt{ADJ}\\
 \addlinespace[3pt]
@@ -706,11 +706,11 @@ Per \emph{Ministro}, UDPipe segue il gold \texttt{PROPN}, mentre BERT assegna \t
 \chapter{Conclusioni}
 \label{chap:conclusions}
 
-Il progetto ha adattato BERT italiano al PoS tagging sul benchmark UD Italian-ISDT 2.15, utilizzando gli split ufficiali e la segmentazione gold. Il modello fine-tuned raggiunge un'accuracy UPOS di circa il 98,81\% nella prima fase e, dopo l'estensione congiunta a UPOS e \texttt{FEATS}, ottiene un'accuracy UPOS di circa il 98,84\% e una macro-F1 sulle classi presenti di circa il 95,57\%, rispetto al 98,75\% e al 94,48\% di UDPipe 2. Le prestazioni sono in accordo con la letteratura sul PoS tagging italiano, mentre gli intervalli appaiati sul test comprendono lo zero: i risultati sostengono l'efficacia del modello nelle condizioni considerate, con incertezza sui piccoli scarti rispetto a UDPipe.
+Il progetto ha adattato BERT italiano al PoS tagging sul benchmark UD Italian-ISDT 2.15, utilizzando gli split ufficiali e la segmentazione gold. Con dieci epoche di addestramento per fase e selezione sul development, il modello fine-tuned raggiunge un'accuracy UPOS di circa il 98,74\% nella prima fase e, dopo l'estensione congiunta a UPOS e \texttt{FEATS}, ottiene un'accuracy UPOS di circa il 98,86\% e una macro-F1 sulle classi presenti di circa il 95,85\%, rispetto al 98,75\% e al 94,48\% di UDPipe 2. Le prestazioni sono in accordo con la letteratura sul PoS tagging italiano. Gli intervalli appaiati sul test comprendono lo zero per tutte le macro-F1 e per le accuracy salvo il seed 456 della fase congiunta: i piccoli scarti rispetto a UDPipe non indicano un vantaggio uniforme del modello.
 
-Per la morfologia, BERT fine-tuned raggiunge il 98,31\% di accuracy esatta \texttt{FEATS}, vicino al 98,29\% di UDPipe, mentre la macro-F1 sulle coppie presenti favorisce il riferimento, con il 90,04\% contro l'88,52\% di BERT. Le due metriche restituiscono quindi un quadro complementare: alla buona correttezza complessiva si affiancano difficoltà sulle caratteristiche rare, che incidono maggiormente sulla macro-F1.
+Per la morfologia, BERT fine-tuned raggiunge il 98,45\% di accuracy esatta \texttt{FEATS} e il 90,23\% di macro-F1 sulle coppie presenti, rispetto al 98,29\% e al 90,04\% di UDPipe. Gli scarti medi sono contenuti e, soprattutto per la macro-F1, si accompagnano a una variabilità tra seed maggiore del vantaggio medio. Alla buona correttezza complessiva si affiancano difficoltà sulle caratteristiche rare, che incidono maggiormente sulla misura per categoria.
 
-I confronti interni mostrano che il fine-tuning migliora nettamente le prestazioni rispetto all'encoder congelato, mentre il CRF offre benefici più circoscritti, soprattutto sulle categorie rare, a fronte di tempi di addestramento maggiori. L'estensione alla morfologia si accompagna a un miglioramento delle prestazioni UPOS, in particolare della macro-F1 sulle classi presenti.
+I confronti interni mostrano che il fine-tuning migliora nettamente le prestazioni rispetto all'encoder congelato, mentre il CRF offre benefici più circoscritti, soprattutto sulle categorie rare, senza un miglioramento uniforme tra compiti e seed. L'estensione alla morfologia si accompagna a un miglioramento delle prestazioni UPOS, in particolare della macro-F1 sulle classi presenti.
 
 Un possibile sviluppo consiste nell'aggiungere un CRF a ciascuna testa \texttt{FEATS}, estendendo la decodifica strutturata alle sequenze dei singoli attributi; i benefici contenuti osservati su UPOS suggeriscono che anche questa estensione potrebbe produrre guadagni limitati. Miglioramenti più consistenti potrebbero richiedere un'architettura capace di modellare esplicitamente le dipendenze tra categorie grammaticali e attributi morfologici, rappresentando anche i vincoli di compatibilità tra le etichette, oltre alle relazioni tra parole consecutive.
 

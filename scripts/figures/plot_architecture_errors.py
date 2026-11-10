@@ -5,7 +5,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch,FancyArrowPatch
 import numpy as np
-ROOT=Path(__file__).resolve().parent.parent
+ROOT=Path(__file__).resolve().parents[2]
 out=ROOT/'report/figures';out.mkdir(parents=True,exist_ok=True)
 plt.rcParams.update({'font.family':'DejaVu Sans','font.size':11,'text.color':'#24343d','savefig.facecolor':'white'})
 fig,ax=plt.subplots(figsize=(13,6.3));ax.set_xlim(0,13);ax.set_ylim(0,6.4);ax.axis('off')

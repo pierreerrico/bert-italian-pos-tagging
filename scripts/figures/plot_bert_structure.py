@@ -3,7 +3,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch,FancyArrowPatch
-out=Path(__file__).resolve().parent/'figures';out.mkdir(exist_ok=True,parents=True)
+out=Path(__file__).resolve().parents[2]/'report/figures';out.mkdir(exist_ok=True,parents=True)
 plt.rcParams.update({'font.family':'DejaVu Sans','font.size':11,'text.color':'#24343d'})
 fig,ax=plt.subplots(figsize=(12,6.3));ax.set_xlim(0,12);ax.set_ylim(-1.0,6.95);ax.axis('off')
 blue='#246b8e';grey='#81919d';orange='#be763a'

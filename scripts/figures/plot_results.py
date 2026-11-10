@@ -5,7 +5,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter, MaxNLocator
 
-ROOT=Path(__file__).resolve().parent.parent
+ROOT=Path(__file__).resolve().parents[2]
 OUT=ROOT/'report/figures'
 RUNS=ROOT/'outputs/bert_upos_then_feats_v2'
 COLORS={'frozen':'#81919d','linear':'#246b8e','crf':'#be763a'}
@@ -85,6 +85,7 @@ for col,(directory,system,title) in enumerate([
  ('bert_upos_then_feats_v1','linear_upos','Fase 1 - solo UPOS'),
  ('bert_upos_then_feats_v2','linear_upos_feats','Fase 2 - UPOS + FEATS')]):
  histories=[read(ROOT/'outputs'/directory/system/f'seed_{seed}'/'training_history.csv') for seed in [42,123,456]]
+ epochs=sorted({float(row['epoch']) for row in histories[0] if row.get('eval_loss')})
  def curve(ax,key,label,color,linestyle='-',percent=False):
   series=[[(float(r['epoch']),float(r[key])) for r in history if r.get(key)] for history in histories]
   assert all(len(series[0])==len(x) for x in series)
@@ -96,12 +97,12 @@ for col,(directory,system,title) in enumerate([
   ax.fill_between(x,np.maximum(mean-std,1e-5) if not percent else mean-std,mean+std,color=color,alpha=.12,linewidth=0)
  ax=axes[0,col];axis(ax,title,'Epoca nella fase');ax.set_ylabel('Loss (scala logaritmica)');ax.grid(axis='y',color='#e5eaed',linewidth=.7)
  curve(ax,'loss','Training','#246b8e');curve(ax,'eval_loss','Development','#be763a')
- ax.set_yscale('log');ax.set_xticks([1,2,3,4,5]);ax.legend(frameon=False,fontsize=8)
+ ax.set_yscale('log');ax.set_xticks(epochs);ax.legend(frameon=False,fontsize=8)
  ax=axes[1,col];axis(ax,'Metriche sul development','Epoca nella fase');ax.set_ylabel('Macro-F1 (%)');ax.grid(axis='y',color='#e5eaed',linewidth=.7)
  curve(ax,'eval_upos_macro_f1_all','UPOS · totale','#246b8e',percent=True)
  if col==1:
   curve(ax,'eval_feats_macro_f1_present','FEATS · coppie presenti','#be763a',percent=True)
   curve(ax,'eval_joint_macro_f1','Punteggio di selezione','#74816f',linestyle='--',percent=True)
- ax.set_xticks([1,2,3,4,5]);ax.legend(frameon=False,fontsize=8,loc='lower right')
+ ax.set_xticks(epochs);ax.legend(frameon=False,fontsize=8,loc='lower right')
  ax.yaxis.set_major_formatter(FuncFormatter(lambda x,pos:f'{x:g}'.replace('.',',')))
 save(fig,'training_dynamics')

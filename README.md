@@ -1,63 +1,46 @@
-# PoS tagging italiano con BERT
+# Italian PoS tagging with BERT
 
-Il progetto adatta BERT italiano alla predizione UPOS e ne valuta le prestazioni sul benchmark standard UD Italian-ISDT 2.15, con split ufficiali e segmentazione gold. Il confronto con UDPipe 2 sullo stesso test e con la letteratura è centrale; encoder congelato e CRF supportano l'analisi, mentre FEATS è un'estensione morfologica.
+Fine-tuning [`dbmdz/bert-base-italian-cased`](https://huggingface.co/dbmdz/bert-base-italian-cased) for UPOS tagging and morphological feature prediction on [UD Italian-ISDT 2.15](https://github.com/UniversalDependencies/UD_Italian-ISDT/tree/r2.15), with gold word and sentence boundaries.
 
-## File da consultare
+The project compares frozen BERT, fine-tuned BERT, and BERT with a UPOS CRF against UDPipe 2. Training has two stages: UPOS first, then UPOS + FEATS from the selected UPOS checkpoint. Each stage runs for 10 epochs with development-set checkpoint selection, using three seeds (`42`, `123`, `456`).
 
-| File o cartella | Contenuto |
-|---|---|
-| [`report/report.tex`](report/report.tex) | Sorgente canonico della relazione, con bibliografia in `report/references.bib`. |
-| [`report/report.pdf`](report/report.pdf) | Relazione compilata. |
-| [`report/Report_BERT_UPOS_LaTeX.zip`](report/Report_BERT_UPOS_LaTeX.zip) | Sorgenti LaTeX, bibliografia e immagine del frontespizio; non contiene codice, dati o risultati sperimentali. |
-| [`BERT_Italian_PoS_UD_2_15.ipynb`](BERT_Italian_PoS_UD_2_15.ipynb) | Pipeline di addestramento e valutazione BERT, con confronto UPOS esterno. |
-| [`Ricognizione_bibliografica_UPOS.md`](Ricognizione_bibliografica_UPOS.md) | Fonti esterne e condizioni di comparabilità. |
-| [`VERIFICA_FINALE.md`](VERIFICA_FINALE.md) | Esito della revisione scientifica, numerica e tecnica del 9 novembre 2026. |
-| `outputs/bert_upos_then_feats_v2/` | Riepiloghi finali: `results.csv`, `comparison_mean_std.csv`, `comparison.csv`, variazioni appaiate e analisi degli errori. |
-| `outputs/references/udpipe_2_15/` | Predizioni e risposte UDPipe salvate, metadati del riferimento e confronto morfologico ricalcolato. |
+## Results
 
-Il protocollo finale comprende **18 prove**, tre architetture per due fasi e tre seed (42, 123, 456). I riepiloghi `v2` riuniscono nove prove UPOS riutilizzate da `outputs/bert_upos_then_feats_v1/` e nove prove congiunte UPOS+FEATS conservate in `v2`. Ciascuna fase dura cinque epoche; la seconda parte dal checkpoint UPOS della stessa architettura e dello stesso seed.
+Test scores (%), averaged over three seeds for BERT. Full results and standard deviations are in the [report](report/report.pdf).
 
-## Verifica offline del confronto morfologico
+| Model | UPOS accuracy | FEATS exact accuracy | FEATS macro-F1 |
+|---|---:|---:|---:|
+| UDPipe 2 | 98.75 | 98.29 | 90.04 |
+| BERT, UPOS only | 98.74 | — | — |
+| BERT, UPOS + FEATS | 98.86 | 98.45 | 90.23 |
 
-Per rileggere il progetto bastano relazione e risultati salvati. Per ricalcolare il confronto FEATS e UPOS+FEATS, dalla cartella `natural-language-processing/` eseguire:
+FEATS macro-F1 considers attribute-value pairs present in the test set.
+
+## Contents
+
+- [`BERT_Italian_PoS_UD_2_15.ipynb`](BERT_Italian_PoS_UD_2_15.ipynb): data preparation, training, and evaluation.
+- [`scripts/analysis/`](scripts/analysis/): metric recalculation, paired bootstrap, error examples, and corpus comparison.
+- [`scripts/figures/`](scripts/figures/): diagrams and result plots for the report.
+- [`report/`](report/): LaTeX source, bibliography, figures, and compiled PDF.
+
+Local datasets and experiment outputs live in `data/` and `outputs/`, which are excluded from Git. UPOS runs are stored in `outputs/bert_upos_then_feats_v1/`; joint-stage runs and combined summaries are in `outputs/bert_upos_then_feats_v2/`.
+
+## Usage
+
+Open the notebook from this directory and run its cells in order. It includes dependency installation and dataset download. For reproducibility, use the configuration and package versions recorded in `experiment.json`; use new output directories for new experiment settings.
+
+To recalculate analyses from saved predictions (Python 3.11+, NumPy):
 
 ```console
-python -B evaluate_udpipe_morphology.py
+python -B scripts/analysis/evaluate_udpipe_morphology.py
+python -B scripts/analysis/evaluate_upos_uncertainty.py
+python -B scripts/analysis/extract_error_examples.py
 ```
 
-Lo [script](evaluate_udpipe_morphology.py) usa soltanto la libreria standard Python e richiede i dati locali `data/UD_Italian-ISDT-r2.15/`, i metadati e le predizioni dei nove modelli congiunti `v2` e le risposte UDPipe memorizzate in `outputs/references/udpipe_2_15/`. Non scarica dati e non esegue training, inferenza o lettura dei pesi. Se si trasferisce il progetto, occorre includere queste cache; lo ZIP LaTeX serve soltanto alla relazione.
+These commands require the local corpus, saved predictions, and cached UDPipe responses in `outputs/references/udpipe_2_15/`. They do not rerun training or inference. Figure scripts additionally require Matplotlib and write to `report/figures/`.
 
-Aggiorna tre file nella cartella del riferimento:
+To compile the report with LaTeX and `latexmk`:
 
-- [`morphology_comparison.csv`](outputs/references/udpipe_2_15/morphology_comparison.csv): confronto aggregato, in percentuale;
-- [`morphology_per_feature_metrics.csv`](outputs/references/udpipe_2_15/morphology_per_feature_metrics.csv): metriche per coppia FEATS, in frazioni;
-- [`morphology_evaluation.json`](outputs/references/udpipe_2_15/morphology_evaluation.json): metriche in frazioni, verifiche e provenienza.
-
-La riga UDPipe del distinto file `outputs/bert_upos_then_feats_v2/comparison.csv` riguarda soltanto UPOS. Il confronto morfologico usa insiemi FEATS completi e accuracy congiunta UPOS+FEATS, con le stesse convenzioni di BERT; i punteggi ufficiali UDPipe `UFeats` e `AllTags` hanno definizioni diverse.
-
-## Esecuzione del notebook
-
-Aprire il notebook dalla radice del repository oppure dalla cartella `natural-language-processing/` ed eseguire le celle in ordine. Il notebook riutilizza le prove complete compatibili, addestra quelle mancanti e rivaluta i modelli sul test. Questa esecuzione completa non è necessaria per revisionare il testo o verificare le metriche dalle predizioni salvate.
-
-Le revisioni, gli hash dei dati e le versioni effettive dell'ambiente sono registrati negli `experiment.json` delle cartelle `v1` e `v2`. Il riuso delle cache verifica rigorosamente anche tali versioni: la cella di installazione non garantisce da sola un ambiente identico. Per riutilizzare le prove esistenti occorre ripristinare l'ambiente registrato; eventuali nuove esecuzioni con impostazioni o ambiente diversi richiedono cartelle di output distinte. I metadati storici documentano le prove già svolte.
-
-
-## Spazio e conservazione degli output
-
-Dopo la pulizia restano i 18 modelli selezionati nelle rispettive cartelle `best_model`, con predizioni, metriche, cronologie e metadati. Le copie intermedie e gli stati degli ottimizzatori sono stati eliminati; per inferenza e valutazione utilizzare `best_model`. Dettagli in [STORAGE_AUDIT.md](STORAGE_AUDIT.md).
-
-
-## Analisi statistica appaiata ed esempi contestuali
-
-Dalla cartella del progetto:
-
-```powershell
-python -B evaluate_upos_uncertainty.py
-python -B extract_error_examples.py
+```console
+latexmk -cd -pdf report/report.tex
 ```
-
-Il primo script richiede NumPy e usa 10.000 ricampionamenti appaiati di frasi (seed casuale 20261109). Accuracy e macro-F1 sono ricalcolate per ogni modello salvato, con intervalli separati per i tre seed: le tre valutazioni del medesimo test non vengono sommate come osservazioni indipendenti. L'inventario macro-F1 resta fissato alle 15 classi presenti nel test; gli output documentano anche le repliche prive di classi rare.
-
-I risultati, gli hash dei file di origine e i parametri si trovano in `outputs/references/udpipe_2_15/paired_bootstrap/`: `summary.csv`, `analysis.json` e `bootstrap_scores.npz`. Gli intervalli percentile sono descrittivi e condizionati ai modelli gia addestrati; non costituiscono un test globale di equivalenza o superiorita.
-
-Il secondo script verifica quattro casi illustrativi contro il CoNLL-U gold e gli output UDPipe, controllando che le predizioni BERT coincidano nei tre seed. Salva contesti, indici, etichette e hash in `outputs/references/qualitative_examples.json`. Entrambi gli script lavorano su file locali e non eseguono training o inferenza.

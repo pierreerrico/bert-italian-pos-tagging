@@ -1,7 +1,8 @@
-﻿"""Extract and verify four illustrative errors from the saved test predictions."""
+﻿"""Extract four illustrative cases, retaining predictions for every saved seed."""
 from pathlib import Path
 import csv,json,hashlib
-ROOT=Path(__file__).resolve().parent
+ROOT=Path(__file__).resolve().parents[2]
+TABLE_SEED=123
 CASES=[('adjectival_participle',195,2),('institutional_title',319,3),
        ('shared_participle_error',30,18),('rare_degree',109,0)]
 
@@ -47,13 +48,14 @@ def main():
    b=bert[seed][sid,wid]
    assert b['word']==g[1] and b['true_label']==g[3] and b['true_feats']==g[5]
    case['bert'][str(seed)]=dict(upos=b['predicted_label'],feats=b['predicted_feats'])
-  assert len({json.dumps(v,sort_keys=True) for v in case['bert'].values()})==1
+  case['bert_agrees_across_seeds']=len({json.dumps(v,sort_keys=True) for v in case['bert'].values()})==1
   cases.append(case)
  output=ROOT/'outputs/references/qualitative_examples.json'
- data=dict(selection='Four illustrative cases, not a representative sample. BERT labels agree across all three seeds.',
+ data=dict(selection='Four illustrative cases, not a representative sample. The report table shows seed 123; predictions for all seeds are retained and need not agree.',
+           table_seed=TABLE_SEED,
            sources=[dict(path=str(p.relative_to(ROOT)),sha256=hashlib.sha256(p.read_bytes()).hexdigest()) for p in sources],cases=cases)
  output.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n',encoding='utf8')
- for case in cases:print(case['word'],case['gold_upos'],case['udpipe_upos'],case['bert']['42'],case['sentence'])
+ for case in cases:print(case['word'],case['gold_upos'],case['udpipe_upos'],case['bert'][str(TABLE_SEED)],case['sentence'])
  print('Saved',output)
 
 if __name__=='__main__':main()

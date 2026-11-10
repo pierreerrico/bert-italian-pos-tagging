@@ -1,6 +1,6 @@
 """Recalculate the cached UDPipe/BERT morphology comparison without inference.
 
-Run with ``python -B evaluate_udpipe_morphology.py``. Only the three
+Run with ``python -B scripts/analysis/evaluate_udpipe_morphology.py``. Only the three
 ``morphology_*`` outputs in the UDPipe reference directory are written.
 Metric definitions match the notebook: complete FEATS dictionaries (including
 Clitic and Typo), pair-presence macro-F1 excluding <NONE>, and UPOS+FEATS joint
@@ -316,5 +316,5 @@ def main(root):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parent)
+    parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[2])
     main(parser.parse_args().project_root.resolve())
