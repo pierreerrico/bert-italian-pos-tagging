@@ -8,6 +8,7 @@
 \usepackage{xcolor}
 \usepackage{graphicx}
 \usepackage{placeins}
+\usepackage{float}
 \usepackage{hyperref}
 \usepackage{url}
 \usepackage{xltabular}
@@ -52,7 +53,6 @@
 \pagenumbering{Roman}
 \newgeometry{left=3cm,right=3cm,top=3cm,bottom=3cm}
 
-
 \chapter*{Abstract}
 \label{chap:abstract}
 
@@ -63,6 +63,7 @@ BERT fine-tuned raggiunge un'accuracy UPOS di circa il 98,81\%, rispetto al 98,7
 \newpage
 
 \begingroup
+\small
 \setlength{\parskip}{0pt}
 \tableofcontents
 \endgroup
@@ -78,7 +79,6 @@ BERT fine-tuned raggiunge un'accuracy UPOS di circa il 98,81\%, rispetto al 98,7
 Nella linguistica computazionale, il Part-of-Speech (PoS) tagging è un compito di etichettatura di sequenze di token, nel quale a ogni token viene assegnata un'etichetta che ne identifica la categoria grammaticale nel contesto della frase. Un token corrisponde generalmente a una parola; può tuttavia indicare anche altri elementi linguistici, come simboli e punteggiatura. Il PoS tagging riveste un ruolo fondamentale per l'analisi linguistica e costituisce una fase preliminare per numerose applicazioni di Natural Language Processing (NLP), tra cui la lemmatizzazione, l'analisi sintattica e la traduzione automatica~\cite{manning2011}.
 
 Universal Dependencies (UD) è un framework per l'annotazione linguistica che definisce convenzioni condivise per la rappresentazione delle categorie grammaticali, delle caratteristiche morfologiche e delle relazioni sintattiche in numerose lingue, tra cui l'italiano~\cite{ud}. La standardizzazione delle annotazioni e la disponibilità di corpora multilingue ne favoriscono l'impiego nella ricerca e nello sviluppo di modelli NLP.
-
 
 In particolare, UD definisce un inventario di 17 categorie grammaticali universali, denominate Universal Part-of-Speech (UPOS) tags~\cite{upos}. Le caratteristiche morfologiche, come genere, numero e tempo verbale, sono rappresentate separatamente, quando applicabili, mediante gli attributi del campo \texttt{FEATS}~\cite{conllu}. La Tabella~\ref{tab:upos} riporta le categorie UPOS, accompagnate da esempi contestuali in italiano e dagli attributi FEATS attestati nel treebank UD Italian-ISDT v2.15. Questi ultimi comprendono tutti gli attributi presenti almeno una volta nelle annotazioni di ciascuna categoria, anche in casi rari, e non sono pertanto necessariamente applicabili a tutti i token appartenenti alla stessa categoria.
 
@@ -233,11 +233,10 @@ A ciò si aggiungono ulteriori problematiche:
 
 Queste problematiche motivano l'impiego di modelli capaci di costruire rappresentazioni linguistiche sensibili al contesto e di sfruttare conoscenze acquisite attraverso il preaddestramento su grandi quantità di dati testuali~\cite{devlin2019}.
 
-
 \section{Modelli neurali per il linguaggio}
 \label{sec:neural-language-models}
 
-Come discusso nella Sezione~\ref{sec:pos-tagging-challenges}, il PoS tagging richiede modelli capaci di identificare le categorie grammaticali delle parole tenendo conto del contesto della frase. L'evoluzione delle tecniche di NLP ha progressivamente migliorato questa capacità, passando da rappresentazioni lessicali statiche ad architetture in grado di integrare informazioni contestuali sempre più complesse~\cite{goldberg2016}.
+L'evoluzione delle tecniche di NLP ha progressivamente migliorato la modellazione del contesto, passando da rappresentazioni lessicali statiche ad architetture in grado di integrare informazioni contestuali sempre più complesse~\cite{goldberg2016}.
 
 Tra gli approcci neurali più influenti, Word2Vec~\cite{mikolov2013} ha permesso di apprendere rappresentazioni vettoriali dense delle parole, dette \textit{word embeddings}, nelle quali termini utilizzati in contesti simili tendono ad assumere rappresentazioni vicine. Tali embedding sono tuttavia statici, ossia associano a ciascuna parola un unico vettore indipendentemente dal contesto, senza distinguere i diversi significati o ruoli grammaticali che essa può assumere.
 
@@ -248,13 +247,12 @@ L'architettura Transformer~\cite{vaswani2017} affronta alcuni di questi limiti s
 \section{Architettura BERT}
 \label{sec:bert-architecture}
 
-Tra i modelli basati sull'architettura Transformer, Bidirectional Encoder Representations from Transformers (BERT)~\cite{devlin2019} sfrutta un Transformer Encoder bidirezionale per produrre rappresentazioni contestuali dei token, risultando particolarmente adatto a compiti come il PoS tagging, nei quali la classificazione grammaticale dipende dal contesto frasale.
+Tra i modelli basati sull'architettura Transformer, Bidirectional Encoder Representations from Transformers (BERT)~\cite{devlin2019} sfrutta un Transformer Encoder-only bidirezionale per produrre rappresentazioni contestuali dei token, risultando particolarmente adatto a compiti come il PoS tagging, nei quali la classificazione grammaticale dipende dal contesto frasale.
 
 \subsection{Tokenizzazione}
 \label{subsec:tokenization}
 
 L'input dell'encoder di BERT è costituito da token prodotti da WordPiece, un metodo di tokenizzazione che mantiene le parole intere oppure le suddivide in frammenti più piccoli, detti \textit{subword}, selezionati da un vocabolario predefinito. Ad esempio, il tokenizer associato al modello \texttt{dbmdz/bert-base-italian-cased} rappresenta \emph{bicicletta} con un singolo token, mentre suddivide \emph{casetta} in \texttt{case} e \texttt{\#\#tta} (il prefisso \texttt{\#\#} indica la continuazione della parola). Questo approccio permette di rappresentare parole rare combinando frammenti già disponibili~\cite{devlin2019}.
-
 
 \subsection{Struttura dell'encoder}
 \label{subsec:encoder-structure}
@@ -264,7 +262,7 @@ Il modello \texttt{dbmdz/bert-base-italian-cased} adotta la configurazione BERT-
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.90\textwidth]{figures/bert_encoder_structure.pdf}
-\caption{Struttura dell'encoder BERT-Base utilizzato nel progetto, con 12 teste di attenzione per blocco e vettori di 768 componenti. A sinistra, il flusso delle rappresentazioni procede dal basso verso l'alto attraverso i 12 blocchi; a destra, il dettaglio di un blocco con attenzione bidirezionale, rete feed-forward, dropout e connessioni residue. Schema basato sull'architettura descritta da Devlin et al.~\cite{devlin2019}.}
+\caption{Struttura dell'encoder BERT-Base utilizzato nel progetto, con 12 teste di attenzione per blocco e vettori di 768 componenti. A sinistra, il flusso delle rappresentazioni procede dall'alto verso il basso attraverso i 12 blocchi; a destra, la struttura interna comune a tutti i blocchi, con attenzione bidirezionale, rete feed-forward e connessioni residue. La freccia di uscita mostra, come esempio, il passaggio dal primo al secondo blocco. Schema basato sull'architettura descritta da Devlin et al.~\cite{devlin2019}.}
 \label{fig:bert-encoder-structure}
 \end{figure}
 
@@ -291,18 +289,14 @@ Il prodotto $QK^{\mathsf T}$ determina i punteggi di compatibilità, scalati per
 
 La rete feed-forward applica indipendentemente a ciascun token due trasformazioni lineari, da 768 a 3\,072 componenti e viceversa, separate da un'attivazione GELU. Entrambi i sottolivelli impiegano dropout, connessioni residue e Layer Normalization per favorire la regolarizzazione e la stabilità dell'addestramento~\cite{devlin2019,vaswani2017}. Al termine dei 12 blocchi, l'encoder restituisce un vettore contestuale di 768 componenti per ciascun token, utilizzabile nei compiti supervisionati.
 
-
-
-
 \subsection{Preaddestramento}
 \label{subsec:pretraining}
 
 Nel BERT originale il preaddestramento combina il Masked Language Modeling (MLM) e la Next Sentence Prediction (NSP). Nel MLM viene selezionato casualmente il 15\% dei token della sequenza: di questi, l'80\% viene sostituito con il token speciale \texttt{[MASK]}, il 10\% con un token casuale e il restante 10\% rimane invariato. Il modello deve predire i token originali nelle posizioni selezionate, sfruttando il contesto bidirezionale. La NSP richiede invece di determinare se due segmenti di testo siano consecutivi nel corpus, mediante una classificazione binaria~\cite{devlin2019}.
 
-Attraverso il preaddestramento, BERT apprende rappresentazioni linguistiche contestuali da grandi quantità di testo, che possono successivamente essere adattate a diversi compiti supervisionati mediante fine-tuning. 
+Attraverso il preaddestramento, BERT apprende rappresentazioni linguistiche contestuali da grandi quantità di testo, che possono successivamente essere adattate a diversi compiti supervisionati mediante fine-tuning.
 
-Il modello \texttt{dbmdz/bert-base-italian-cased}, adottato nel presente lavoro, utilizza l'architettura BERT-Base ed è stato preaddestrato su corpora in lingua italiana. Trattandosi di un modello \textit{cased}, mantiene la distinzione tra lettere maiuscole e minuscole durante la tokenizzazione~\cite{model}.
-
+Il checkpoint adottato è stato preaddestrato su corpora italiani e, nella variante \textit{cased}, mantiene la distinzione tra lettere maiuscole e minuscole durante la tokenizzazione~\cite{model}.
 
 \section{Obiettivi del progetto}
 \label{sec:project-objectives}
@@ -341,9 +335,7 @@ BERT + CRF & Addestrabile & Lineare e CRF & Lineari & $2\cdot10^{-5}$\\
 \label{fig:model-architectures}
 \end{figure}
 
-
-
-Nella prima fase, a partire dal checkpoint BERT preaddestrato, l'ottimizzazione coinvolge la testa UPOS, l'eventuale CRF e, nelle architetture fine-tuned (i.e. con encoder addestrabile), l'encoder. Nella seconda fase, il checkpoint UPOS selezionato per la stessa architettura e lo stesso seed viene esteso aggiungendo le teste FEATS, inizializzate ex novo, mentre encoder, testa UPOS ed eventuale CRF mantengono i pesi appresi. L'addestramento prosegue quindi su entrambi i compiti, con il CRF applicato alla sola sequenza UPOS e le FEATS predette tramite teste lineari; nelle architetture fine-tuned, le rispettive loss contribuiscono all'aggiornamento dell'encoder condiviso~\cite{udify2019}.
+Nella prima fase, a partire dal checkpoint BERT preaddestrato, l'ottimizzazione coinvolge la testa UPOS, l'eventuale CRF e, nelle architetture fine-tuned (i.e. con encoder addestrabile), l'encoder. Nella seconda fase, il checkpoint UPOS selezionato per la stessa architettura e lo stesso seed viene esteso aggiungendo le teste FEATS, inizializzate ex novo, mentre encoder, testa UPOS ed eventuale CRF mantengono i pesi appresi. L'addestramento prosegue su entrambi i compiti e, nelle architetture fine-tuned, le rispettive loss aggiornano l'encoder condiviso~\cite{udify2019}.
 
 Ciascuna configurazione viene eseguita con i seed 42, 123 e 456, per un totale di 18 prove nel confronto finale, nove per fase, completando tutte le prove UPOS prima di avviare l'estensione a FEATS. L'impiego degli stessi seed permette di confrontare le configurazioni attraverso esecuzioni appaiate e di valutare la variabilità dei risultati mediante le statistiche descritte nella Sottosezione~\ref{subsec:method-aggregation-error-analysis}~\cite{seeds}.
 
@@ -375,11 +367,9 @@ La lettura del corpus conserva le parole sintattiche identificate da un ID inter
 \subsection{Rappresentazione di UPOS e FEATS}
 \label{subsec:method-label-representation}
 
-Gli inventari delle classi sono costruiti esclusivamente sul training e comprendono 17 tag UPOS e 14 attributi FEATS, per un totale di 40 coppie attributo-valore. Ciascuna parola viene rappresentata mediante un'etichetta UPOS e un vettore di etichette morfologiche, nel quale ogni componente corrisponde a un attributo e distingue i suoi valori dalla classe \texttt{<NONE>} (i.e. assenza dell'attributo).
+Gli inventari sono costruiti esclusivamente sul training e comprendono 17 tag UPOS e 14 attributi \texttt{FEATS}, per un totale di 40 coppie attributo-valore. Ogni parola riceve un'etichetta UPOS e un vettore morfologico con una componente per attributo, che assume uno dei valori osservati nel training oppure \texttt{<NONE>} quando l'attributo è assente.
 
-Per esempio, una parola annotata con \texttt{Gender=Masc|Number=Sing} riceve l'etichetta \texttt{Masc} per l'attributo Gender, \texttt{Sing} per Number e \texttt{<NONE>} per gli attributi assenti. A partire da questa rappresentazione, ciascuna testa di classificazione apprende a predire il valore del rispettivo attributo, inclusa la sua eventuale assenza. Gli eventuali valori multipli di uno stesso attributo sono ordinati e conservati come un'unica etichetta composta, compatibilmente con il formato CoNLL-U~\cite{conllu}.
-
-Le metriche utilizzano le annotazioni originali anche quando contengono coppie assenti dal training (e.g. \texttt{Typo=Yes} nel test), così che questi casi rimangano nel conteggio degli errori anche quando il modello non dispone della classe corrispondente.
+Per esempio, \texttt{Gender=Masc|Number=Sing} viene rappresentato con \texttt{Masc} per Gender, \texttt{Sing} per Number e \texttt{<NONE>} per gli altri attributi; gli eventuali valori multipli sono ordinati e conservati come un'unica etichetta composta, secondo il formato CoNLL-U~\cite{conllu}. Le metriche mantengono anche le coppie gold assenti dal training, come \texttt{Typo=Yes} nel test, conteggiandole tra gli errori quando il modello non dispone della classe corrispondente.
 
 \section{Preprocessing e allineamento}
 \label{sec:method-preprocessing}
@@ -391,9 +381,9 @@ Nella variante CRF, gli score delle prime subword vengono raccolti in sequenze c
 \section{Modelli e funzione obiettivo}
 \label{sec:method-objective}
 
-L'encoder produce le rappresentazioni utilizzate da una testa UPOS nella prima fase e da 15 teste nella seconda (una per UPOS e 14 per FEATS). Prima delle rispettive trasformazioni lineari, alle rappresentazioni viene applicato un dropout con probabilità 0.1. Le teste prive di CRF vengono addestrate mediante cross-entropy mediata sulle parole valide e predicono la classe con score massimo, condividendo l'encoder e mantenendo parametri di classificazione distinti~\cite{hf}.
+Le rappresentazioni dell'encoder alimentano una testa UPOS nella prima fase e 15 teste nella seconda, una per UPOS e 14 per \texttt{FEATS}, ciascuna con dropout di probabilità 0.1 seguito da una trasformazione lineare. Le teste condividono l'encoder ma hanno parametri distinti; quelle prive di CRF utilizzano cross-entropy mediata sulle parole valide durante l'addestramento e selezionano la classe con score massimo in predizione~\cite{hf}.
 
-Nella variante con CRF, gli score della testa UPOS costituiscono le emissioni di una catena lineare, alla quale si aggiungono parametri che rappresentano le transizioni tra tag consecutivi, così da modellare regolarità locali delle sequenze grammaticali. L'addestramento minimizza la log-verosimiglianza negativa della sequenza gold, normalizzata sul numero di parole del batch, mentre la decodifica Viterbi seleziona la sequenza con score complessivo massimo~\cite{crf}. La decodifica strutturata è applicata a UPOS per valutarne il contributo al compito principale, mentre le teste FEATS lineari consentono di aggiungere la supervisione morfologica mantenendo contenuta la complessità del modello.
+Nella variante CRF, gli score della testa UPOS costituiscono le emissioni di una catena lineare, combinate con parametri di transizione tra tag consecutivi per modellare le regolarità locali della sequenza. L'addestramento minimizza la log-verosimiglianza negativa della sequenza gold, normalizzata sul numero di parole del batch, mentre la decodifica Viterbi restituisce la sequenza con score complessivo massimo~\cite{crf}. Il CRF opera soltanto su UPOS, lasciando lineari le teste \texttt{FEATS}.
 
 Indicando con $\mathcal A$ l'insieme degli attributi morfologici, le funzioni obiettivo delle due fasi sono
 \begin{equation}
@@ -428,7 +418,7 @@ Clipping della norma dei gradienti & 1.0\\
 \label{tab:training-settings}
 \end{table}
 
-Nella seconda fase si caricano i pesi del checkpoint UPOS selezionato e si avviano una nuova ottimizzazione AdamW e un nuovo scheduler per altre cinque epoche, mantenendo fisso l'encoder del baseline congelato. Le variazioni UPOS vanno quindi interpretate considerando l'effetto congiunto dell'estensione multitask, della prosecuzione dell'addestramento e del criterio di selezione.
+La seconda fase avvia una nuova ottimizzazione AdamW e un nuovo scheduler per altre cinque epoche. Le variazioni UPOS vanno quindi interpretate considerando l'effetto congiunto dell'estensione multitask, della prosecuzione dell'addestramento e del criterio di selezione.
 
 L'esecuzione su NVIDIA GeForce RTX 4070 SUPER, con 12 GB di memoria, utilizza precisione mista FP16 per accelerare il training e ridurre l'occupazione di memoria.
 
@@ -437,7 +427,7 @@ L'esecuzione su NVIDIA GeForce RTX 4070 SUPER, con 12 GB di memoria, utilizza pr
 
 Al termine di ogni epoca il modello viene valutato sul development set e, nella prima fase, viene selezionato il checkpoint che massimizza la macro-F1 UPOS sui 17 tag del training. Nella seconda fase si utilizza invece il punteggio $S_{\mathrm{dev}}=(F_{\mathrm U}+F_{\mathrm F})/2$, dove $F_{\mathrm U}$ indica la stessa macro-F1 UPOS e $F_{\mathrm F}$ la macro-F1 FEATS sulle coppie presenti nel development, escludendo \texttt{<NONE>}. La media assegna uguale peso ai due compiti nella selezione. Nella seconda fase viene salvato un checkpoint al termine di ciascuna delle cinque epoche; per la valutazione finale si utilizza quello con il punteggio migliore sul development set.
 
-La Figura~\ref{fig:training-dynamics} mostra l'evoluzione dell'addestramento di BERT fine-tuned nelle due fasi. Le curve sul development permettono di seguire la stabilizzazione delle prestazioni UPOS e l'apprendimento delle nuove teste \texttt{FEATS}; nella seconda fase viene riportato anche il punteggio congiunto utilizzato per selezionare il checkpoint.
+La Figura~\ref{fig:training-dynamics} mostra che la loss di training continua a diminuire, mentre quella sul development si stabilizza: gli aggiornamenti successivi migliorano quindi soprattutto l'adattamento ai dati di addestramento. Nella fase congiunta, la macro-F1 UPOS sul development diminuisce mentre cresce quella \texttt{FEATS}; il punteggio medio dei due compiti aumenta perché il miglioramento morfologico compensa la riduzione su UPOS, spiegando la selezione di checkpoint nelle ultime epoche.
 
 \begin{figure}[htbp]
 \centering
@@ -488,15 +478,21 @@ Per ogni configurazione si riportano media e deviazione standard campionaria sui
 \section{Confronto con UDPipe 2}
 \label{sec:method-udpipe}
 
-Il riferimento esterno è UDPipe 2 \texttt{italian-isdt-ud-2.15-241121}, valutato sul medesimo test con parole e confini di frase gold, rimuovendo dall'input le annotazioni grammaticali~\cite{udpipe}. Si verificano modello, hash del test e allineamento parola per parola; le metriche UPOS e FEATS vengono ricalcolate con le stesse convenzioni adottate per BERT.
+UDPipe 2 \texttt{italian-isdt-ud-2.15-241121} viene valutato sullo stesso test con parole e confini gold, rimuovendo le annotazioni grammaticali~\cite{udpipe}. Si verificano modello, hash del test e allineamento, ricalcolando le metriche UPOS e FEATS con le convenzioni di BERT.
 
-Con allineamento completo, la metrica UPOS F1 ufficiale coincide con l'accuracy; il punteggio di riferimento pubblicato per il modello è pari al 98,75\%~\cite{udpipe}. Per FEATS si valuta l'intero insieme di attributi, comprese le caratteristiche specifiche del treebank e quelle assenti dal training, ricalcolando anche macro-F1 e accuracy congiunta UPOS e FEATS. Il valutatore UD ufficiale limita invece \emph{UFeats} agli attributi universali e include XPOS in \emph{AllTags}: questi punteggi non sostituiscono le metriche qui ricalcolate. Poiché UDPipe impiega anche BERT multilingue, il confronto riguarda sistemi completi nelle medesime condizioni di input~\cite{udpipe}.
+Con parole allineate, l'F1 UPOS coincide con l'accuracy. Le metriche FEATS comprendono tutti gli attributi, inclusi quelli specifici del treebank e assenti dal training, mentre il valutatore UD limita \emph{UFeats} agli attributi universali e include XPOS in \emph{AllTags}. UDPipe impiega anche BERT multilingue: il confronto riguarda quindi sistemi completi~\cite{udpipe}.
+
+\paragraph{Incertezza del confronto appaiato.}
+\label{par:method-paired-bootstrap}
+
+Il bootstrap appaiato per frase~\cite{dror2018} stima l'incertezza degli scarti BERT meno UDPipe: per ciascuna di 10\,000 repliche si estraggono con reinserimento 482 frasi, usando lo stesso campione per tutti i sistemi. Le metriche sono ricalcolate dai conteggi complessivi, mantenendo le 15 classi UPOS del test e F1 nullo ai denominatori nulli; gli intervalli percentile al 95\% sono separati per fase e seed.
+
+Gli intervalli descrivono l'incertezza sul test per modelli già addestrati, senza includere la variabilità del training. Il ricampionamento preserva le parole di ogni frase, assume indipendenza tra frasi e risente delle categorie rare; codice e parametri sono nel repository~\cite{repo}.
 
 \section{Riproducibilità}
 \label{sec:method-reproducibility}
 
-Per ogni prova si conservano checkpoint, cronologia, predizioni, metriche, revisioni del modello e del tokenizer, hash dei dati, inventari, seed, iperparametri e versioni dei pacchetti. Nella seconda fase si registra inoltre il checkpoint UPOS di origine, mentre uno script riproduce il confronto morfologico con UDPipe dagli output salvati. Il codice, gli script di verifica e le istruzioni per riprodurre gli esperimenti sono raccolti nel repository del progetto~\cite{repo}.
-
+Per ogni prova si conservano modello selezionato, cronologia, predizioni e metriche, insieme a revisioni, hash dei dati, inventari, seed, iperparametri e versioni software. Si registra inoltre l'origine dei pesi UPOS; codice e istruzioni, compresi gli script di confronto dagli output salvati, sono nel repository del progetto~\cite{repo}.
 
 \chapter{Risultati}
 \label{chap:results}
@@ -506,7 +502,7 @@ La valutazione del modello fine-tuned per UPOS è incentrata sul confronto con U
 \section{Confronto UPOS con UDPipe 2}
 \label{sec:results-upos-comparison}
 
-BERT fine-tuned sul solo compito UPOS raggiunge un'accuracy del $98{,}81\pm0{,}09\%$, rispetto al 98,75\% di UDPipe 2. Dopo l'estensione congiunta a UPOS e \texttt{FEATS}, la stessa architettura raggiunge il $98{,}84\pm0{,}05\%$. La Figura~\ref{fig:upos-reference-comparison} evidenzia il confronto sulle due metriche principali; la Tabella~\ref{tab:results-upos} riporta tutte le configurazioni BERT e il riferimento esterno; il confronto utilizza le stesse parole e gli stessi confini di frase gold, con metriche ricalcolate dalle predizioni allineate utilizzando le medesime convenzioni per tutti i sistemi, secondo il protocollo della Sezione~\ref{sec:method-udpipe}.
+BERT fine-tuned sul solo compito UPOS raggiunge un'accuracy del $98{,}81\pm0{,}09\%$, rispetto al 98,75\% di UDPipe 2. Dopo l'estensione congiunta a UPOS e \texttt{FEATS}, la stessa architettura raggiunge il $98{,}84\pm0{,}05\%$. La Figura~\ref{fig:upos-reference-comparison} evidenzia il confronto sulle due metriche principali; il confronto utilizza le stesse parole e gli stessi confini di frase gold, con metriche ricalcolate dalle predizioni allineate utilizzando le medesime convenzioni per tutti i sistemi, secondo il protocollo della Sezione~\ref{sec:method-udpipe}.
 
 \begin{figure}[htbp]
 \centering
@@ -517,7 +513,6 @@ BERT fine-tuned sul solo compito UPOS raggiunge un'accuracy del $98{,}81\pm0{,}0
 \FloatBarrier
 
 Il confronto evidenzia accuracy vicine al riferimento e un miglioramento della macro-F1 dopo l'estensione morfologica. La Tabella~\ref{tab:results-upos} completa questa lettura con i risultati delle tre architetture in entrambe le fasi.
-
 
 \begin{table}[!htbp]
 \centering\small
@@ -544,16 +539,37 @@ BERT + CRF & $98{,}82\pm0{,}05$ & $95{,}49\pm0{,}64$ & $84{,}25\pm0{,}57$\\
 \label{tab:results-upos}
 \end{table}
 
-Il margine medio di accuracy rispetto a UDPipe è di circa 0,06 punti percentuali nella prima fase e 0,09 nella seconda. UDPipe commette 130 errori, mentre BERT fine-tuned della seconda fase ne commette 127, 118 e 117 nei tre seed. La differenza corrisponde quindi a poche parole su oltre diecimila; le tre ripetizioni descrivono la variabilità di BERT, ma non costituiscono un test di significatività del vantaggio rispetto al riferimento.
+Il margine medio di accuracy rispetto a UDPipe è di circa 0,06 punti percentuali nella prima fase e 0,09 nella seconda. UDPipe commette 130 errori, mentre BERT fine-tuned della seconda fase ne commette 127, 118 e 117 nei tre seed. La differenza corrisponde quindi a poche parole su oltre diecimila e viene esaminata anche attraverso gli intervalli del confronto appaiato.
 
 La macro-F1 sulle 15 classi presenti rende più articolato il confronto: nella prima fase BERT fine-tuned ottiene il 93,91\%, contro il 94,48\% di UDPipe, pur avendo un'accuracy media leggermente maggiore. Dopo la fase congiunta raggiunge il 95,57\%, con uno scarto medio di 1,09 punti rispetto al riferimento. Circa 0,93 punti di questo scarto provengono dalla categoria \texttt{X}, presente soltanto 13 volte, il cui F1 passa dal 37,50\% di UDPipe al 51,48\% medio di BERT. Il vantaggio macro richiede quindi cautela rispetto alle classi rare. La macro-F1 sui 17 tag segue lo stesso andamento, con la differenza di scala dovuta alle due classi assenti dal test descritta nella Sottosezione~\ref{subsec:method-upos-metrics}.
 
-Questi risultati indicano che il fine-tuning produce un sistema competitivo rispetto al riferimento riprodotto. Il confronto riguarda sistemi completi con procedure di apprendimento diverse: UDPipe 2 impiega anche rappresentazioni contestuali da BERT multilingue~\cite{udpipe}. La segmentazione gold permette di valutare l'assegnazione dei tag sulle parole fornite e circoscrive le conclusioni a questa condizione di input.
+La Tabella~\ref{tab:upos-paired-bootstrap} quantifica l'incertezza degli scarti di BERT fine-tuned rispetto a UDPipe, usando il ricampionamento per frase descritto nella Sezione~\ref{sec:method-udpipe}. Gli intervalli di accuracy e macro-F1 comprendono lo zero per tutti i seed in entrambe le fasi: sul test disponibile, quindi, la direzione dei piccoli scarti osservati non risulta stabile rispetto al ricampionamento. Questo esito non dimostra equivalenza tra i sistemi; gli intervalli più ampi della macro-F1 riflettono anche il peso delle categorie con pochi esempi.
+
+\begin{table}[!htb]
+\centering\small
+\begin{tabular}{lrr}
+\toprule
+Seed & $\Delta$ accuracy [IC 95\%] & $\Delta$ macro-F1 presenti [IC 95\%]\\
+\midrule
+\multicolumn{3}{l}{\textbf{Fase 1: UPOS}}\\
+42 & $-0{,}05\;[-0{,}22; +0{,}12]$ & $-0{,}95\;[-4{,}20; +1{,}35]$\\
+123 & $+0{,}12\;[-0{,}06; +0{,}31]$ & $-0{,}04\;[-1{,}88; +1{,}60]$\\
+456 & $+0{,}09\;[-0{,}08; +0{,}26]$ & $-0{,}72\;[-2{,}01; +0{,}37]$\\
+\midrule
+\multicolumn{3}{l}{\textbf{Fase 2: UPOS + \texttt{FEATS}}}\\
+42 & $+0{,}03\;[-0{,}15; +0{,}22]$ & $+0{,}95\;[-1{,}81; +3{,}86]$\\
+123 & $+0{,}12\;[-0{,}08; +0{,}31]$ & $+0{,}60\;[-3{,}35; +4{,}55]$\\
+456 & $+0{,}12\;[-0{,}06; +0{,}32]$ & $+1{,}70\;[-0{,}28; +4{,}66]$\\
+\bottomrule
+\end{tabular}
+\caption{Differenze UPOS di BERT fine-tuned rispetto a UDPipe, in punti percentuali, e intervalli bootstrap appaiati al 95\% da 10\,000 ricampionamenti di frasi. Ogni seed viene valutato separatamente; gli intervalli sono marginali, senza correzione per confronti multipli.}
+\label{tab:upos-paired-bootstrap}
+\end{table}
 
 \section{Posizionamento rispetto alla letteratura}
 \label{sec:results-literature-comparison}
 
-Il confronto con la letteratura considera sistemi pertinenti al PoS tagging italiano, con particolare riferimento ai risultati su Italian-ISDT. La Tabella~\ref{tab:literature} raccoglie sia encoder Transformer italiani sia modelli generativi adattati all'analisi sintattica, riportando per ciascuno la metrica e le condizioni di valutazione disponibili. Questi riferimenti permettono di collocare il modello sviluppato nel panorama degli approcci esistenti.
+Il confronto con la letteratura considera sistemi pertinenti al PoS tagging italiano, con particolare riferimento ai risultati su Italian-ISDT. La Tabella~\ref{tab:literature} raccoglie sia encoder Transformer italiani sia modelli generativi adattati all'analisi sintattica, riportando per ciascuno la metrica e le condizioni di valutazione disponibili.
 
 \begin{table}[!htbp]
 \centering\small
@@ -574,10 +590,9 @@ LLM con LoRA, quattro modelli~\cite{matsuda2026} & $98{,}3$--$98{,}8$ & F1 UPOS;
 \label{tab:literature}
 \end{table}
 
+Le accuracy del modello sviluppato, pari al 98,81\% sul solo UPOS e al 98,84\% dopo l'estensione a \texttt{FEATS}, sono in accordo con i risultati riportati per i Transformer italiani. Tamburini~\cite{tamburini2020} ottiene il 98,78\% con UmBERTo su UD-ISDT 2.5; il repository di Schweter~\cite{schweter2020} riporta il 98,84\% per BERT italiano \textit{cased}, utilizzato anche in questo progetto, e il 98,90\% per la variante XXL. Il repository ufficiale di UmBERTo~\cite{umberto2020} documenta un valore più alto, pari al 98,977\%.
 
-Le accuracy del modello sviluppato, pari al 98,81\% sul solo UPOS e al 98,84\% dopo l'estensione a \texttt{FEATS}, sono in accordo con i risultati riportati per i Transformer italiani. Tamburini~\cite{tamburini2020} ottiene il 98,78\% con UmBERTo su UD-ISDT 2.5; il repository di Schweter~\cite{schweter2020} riporta il 98,84\% per BERT italiano \textit{cased}, utilizzato anche in questo progetto, e il 98,90\% per la variante XXL. Il repository ufficiale di UmBERTo~\cite{umberto2020} documenta un valore più alto, pari al 98,977\%. Si osserva quindi una sostanziale coerenza delle prestazioni, pur in presenza di modelli preaddestrati e procedure sperimentali differenti.
-
-Le differenze architetturali riguardano anche il modo in cui viene utilizzata l'informazione morfologica. Nel precedente sistema di Tamburini~\cite{tamburini2016}, valutato sui benchmark EVALITA, una rete BiLSTM-CRF riceve in ingresso rappresentazioni lessicali arricchite con le analisi prodotte da AnIta, un analizzatore morfologico per l'italiano. Nel presente progetto, invece, la morfologia viene appresa come compito supervisionato aggiuntivo mediante le teste \texttt{FEATS}, senza fornire al modello le analisi di uno strumento esterno. Si tratta quindi di due modi diversi di integrare la conoscenza morfologica nella rete.
+Le differenze architetturali riguardano anche il modo in cui viene utilizzata l'informazione morfologica. Nel precedente sistema di Tamburini~\cite{tamburini2016}, valutato sui benchmark EVALITA, una rete BiLSTM-CRF riceve in ingresso rappresentazioni lessicali arricchite con le analisi prodotte da AnIta, un analizzatore morfologico per l'italiano. Nel presente progetto, invece, la morfologia viene appresa come compito supervisionato aggiuntivo mediante le teste \texttt{FEATS}, senza fornire al modello le analisi di uno strumento esterno.
 
 Le condizioni sui dati sono riportate per contestualizzare i valori della tabella. Il confronto dei file ISDT del commit \texttt{f20fa2b}, usato da Schweter, con UD 2.15 conferma che il test conserva le stesse 482 frasi e 10\,417 parole, con forme e confini di frase identici, ma contiene cinque etichette UPOS differenti; anche training e development presentano differenze, come verificabile con lo script di confronto incluso nel repository del progetto~\cite{repo}. Per il risultato del repository UmBERTo, la tabella originale non specifica la release del corpus e i dettagli del protocollo.
 
@@ -604,14 +619,14 @@ La Figura~\ref{fig:upos-stage-changes} riassume il passaggio alla seconda fase: 
 
 La predizione delle caratteristiche morfologiche estende il compito principale UPOS. La Figura~\ref{fig:feats-reference-comparison} mette a confronto BERT fine-tuned e UDPipe 2 sulle due metriche morfologiche principali; la Tabella~\ref{tab:results-feats} completa il quadro con tutte le configurazioni della seconda fase sul medesimo test con segmentazione gold. L'accuracy esatta richiede la corrispondenza dell'intero insieme \texttt{FEATS} di una parola; le macro-F1 attribuiscono uguale peso alle coppie attributo-valore. Per il riferimento si riutilizzano le predizioni già disponibili, valutate con le convenzioni della Sezione~\ref{sec:method-udpipe}.
 
-\begin{figure}[htbp]
+\begin{figure}[!htb]
 \centering
 \includegraphics[width=\textwidth]{figures/feats_reference_comparison.pdf}
-\caption{Confronto morfologico tra BERT fine-tuned e UDPipe 2. L'accuracy esatta misura la corrispondenza dell'intero insieme \texttt{FEATS}; la macro-F1 considera le coppie attributo-valore presenti. Per BERT si riportano media e deviazione standard campionaria sui tre seed; per UDPipe una sola esecuzione. Gli assi verticali sono troncati e adattati alle singole metriche per rendere leggibili gli scarti; i valori riportati sopra le colonne indicano i punteggi effettivi.}
+\caption{Accuracy esatta e macro-F1 sulle coppie \texttt{FEATS} presenti: confronto tra BERT fine-tuned e UDPipe 2. Per BERT si riportano media e deviazione standard sui tre seed; per UDPipe una sola esecuzione. Gli assi verticali sono troncati.}
 \label{fig:feats-reference-comparison}
 \end{figure}
 
-\begin{table}[!htbp]
+\begin{table}[!htb]
 \centering\small
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lrrrr}
@@ -633,50 +648,80 @@ Come mostra la Figura~\ref{fig:feats-reference-comparison}, BERT fine-tuned e UD
 
 Nei confronti interni, l'accuracy \texttt{FEATS} passa dall'87,68\% del modello congelato al 98,31\% di BERT fine-tuned e la macro-F1 sulle coppie presenti dall'82,45\% all'88,52\%. Gli scarti tra i due modelli fine-tuned rimangono contenuti: la differenza media di accuracy \texttt{FEATS} è di 0,06 punti e il CRF risulta lievemente migliore in due seed su tre, pertanto l'ordinamento delle medie richiede cautela. Inoltre, le teste \texttt{FEATS} sono lineari in entrambe le architetture, mentre il CRF agisce soltanto su UPOS; le differenze morfologiche riflettono quindi l'apprendimento congiunto delle teste e dell'encoder condiviso, oltre alla selezione del checkpoint.
 
-L'accuracy sulle singole decisioni parola-attributo raggiunge il 99,83\% con BERT fine-tuned e l'accuracy dell'insieme completo il 98,31\%, mentre la macro-F1 presente si ferma all'88,52\%. Queste misure descrivono aspetti complementari: la prima comprende numerose decisioni di assenza, l'accuracy esatta include anche le 4\,055 parole con insieme gold vuoto e la macro-F1 attribuisce uguale peso alle coppie frequenti e rare, rendendo visibili difficoltà meno evidenti nelle accuracy aggregate.
+L'accuracy sulle singole decisioni parola-attributo raggiunge il 99,83\%, ma comprende numerose decisioni di assenza. Anche l'accuracy esatta include le 4\,055 parole con insieme gold vuoto, mentre la macro-F1 attribuisce uguale peso alle coppie frequenti e rare: queste differenze spiegano la distanza tra le misure.
 
 La selezione congiunta individua checkpoint delle epoche 4--5 per BERT fine-tuned e 3--5 per BERT + CRF, mentre il modello congelato seleziona sempre la quinta epoca; la deviazione standard dell'accuracy \texttt{FEATS} rimane entro 0,10 punti in tutte le architetture.
 
 \section{Analisi degli errori}
 \label{sec:results-errors}
 
-Le principali confusioni UPOS coinvolgono nomi comuni, nomi propri e aggettivi: sommando le tre esecuzioni di BERT fine-tuned della prima fase, si osservano 46 assegnazioni da \texttt{NOUN} a \texttt{PROPN}, 38 nella direzione opposta e 29 da \texttt{NOUN} a \texttt{ADJ}; i conteggi sono aggregati sui tre seed e riguardano valutazioni del medesimo test set. Le medesime coppie restano prevalenti dopo l'estensione morfologica, pur con variazioni nei conteggi. La Figura~\ref{fig:upos-error-confusions} mostra le confusioni dopo la fase congiunta, confermando il peso degli scambi tra nomi comuni, nomi propri e aggettivi.
+Le principali confusioni UPOS coinvolgono nomi comuni, nomi propri e aggettivi: sommando le tre esecuzioni di BERT fine-tuned della prima fase, si osservano 46 assegnazioni da \texttt{NOUN} a \texttt{PROPN}, 38 nella direzione opposta e 29 da \texttt{NOUN} a \texttt{ADJ}. La Figura~\ref{fig:upos-error-confusions} mostra che questi scambi restano prevalenti dopo l'estensione morfologica.
 
-
-
-
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.60\textwidth]{figures/upos_error_confusions.pdf}
-\caption{Confusioni UPOS di BERT fine-tuned dopo la fase congiunta. Sono rappresentate le sei categorie maggiormente coinvolte negli errori; la diagonale delle predizioni corrette viene esclusa per rendere leggibili le confusioni. I conteggi sommano le predizioni dei tre seed sul medesimo test.}
-\label{fig:upos-error-confusions}
-\end{figure}
-
-La categoria \texttt{X}, presente soltanto 13 volte, chiarisce la sensibilità della macro-F1: nella prima fase il suo F1 medio passa dal 26,36\% con classificazione lineare al 37,37\% con CRF, spiegando quasi interamente il vantaggio macro della seconda architettura. Dopo la fase congiunta, i valori raggiungono rispettivamente il 51,48\% e il 53,08\%, contribuendo agli incrementi della media per categoria a fronte di variazioni ridotte dell'accuracy. Il supporto limitato invita a interpretare questi miglioramenti insieme alle prestazioni delle classi più frequenti.
+La categoria \texttt{X}, presente soltanto 13 volte, chiarisce la sensibilità della macro-F1: nella prima fase il suo F1 medio passa dal 26,36\% con classificazione lineare al 37,37\% con CRF, spiegando quasi interamente il vantaggio macro della seconda architettura. Dopo la fase congiunta, i valori raggiungono rispettivamente il 51,48\% e il 53,08\%, contribuendo agli incrementi della media per categoria a fronte di variazioni ridotte dell'accuracy.
 
 Per \texttt{FEATS}, gli errori in valore assoluto si concentrano soprattutto su numero e genere, che hanno elevato supporto: e.g., \texttt{Number=Sing} accumula 119 falsi positivi e 108 falsi negativi nelle tre prove di BERT fine-tuned, pur mantenendo un F1 medio del 99,07\%. Restano più difficili alcune coppie rare, tra cui \texttt{Foreign=Yes}, con 11 occorrenze e F1 medio del 29,30\%, mentre \texttt{Degree=Abs} e \texttt{PronType=Exc}, presenti rispettivamente tre volte e una, ricevono F1 nullo in tutte le configurazioni BERT. Anche l'unica occorrenza di \texttt{Typo=Yes} resta errata, poiché la coppia è assente dall'inventario di training.
 
-UDPipe riconosce due delle tre occorrenze di \texttt{Degree=Abs}, ottenendo un F1 del 57,14\%, e questa sola coppia spiega circa 1,50 dei 1,52 punti di vantaggio macro su BERT fine-tuned; le differenze sulle altre coppie quasi si compensano. Il divario morfologico dipende quindi soprattutto da questi pochi casi, analogamente al ruolo di \texttt{X} nel confronto UPOS.
+UDPipe riconosce due delle tre occorrenze di \texttt{Degree=Abs}, con un F1 del 57,14\%. Questa coppia spiega circa 1,50 dei 1,52 punti di vantaggio macro su BERT fine-tuned, mentre le differenze sulle altre coppie quasi si compensano.
+
+\begingroup
+\setlength{\intextsep}{6pt}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\textwidth]{figures/upos_error_confusions.pdf}
+\caption{Confusioni UPOS di BERT fine-tuned: righe gold, colonne predette. Ogni cella conta gli errori aggregati sui tre seed; il blu più scuro indica più errori, ad esempio 42 da \texttt{NOUN} a \texttt{PROPN}. La diagonale delle predizioni corrette è esclusa.}
+\label{fig:upos-error-confusions}
+\end{figure}
+\endgroup
+
+\subsection{Esempi contestuali}
+\label{subsec:results-contextual-examples}
+
+La Tabella~\ref{tab:contextual-errors} raccoglie quattro casi illustrativi, con predizioni BERT identiche nei tre seed. Comprendono successi ed errori di entrambi i sistemi e un'omissione morfologica, senza costituire un campione rappresentativo.
+
+\begin{table}[H]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}Xllll}
+\toprule
+Estratto & Campo & Gold & UDPipe & BERT\\
+\midrule
+Il Presidente \textbf{eletto} nomina e revoca i componenti della Giunta. & UPOS & \texttt{ADJ} & \texttt{VERB} & \texttt{ADJ}\\
+\addlinespace[3pt]
+Chi è il \textbf{Ministro} degli Esteri italiano? & UPOS & \texttt{PROPN} & \texttt{PROPN} & \texttt{NOUN}\\
+\addlinespace[3pt]
+... l'operazione è considerata già \textbf{conclusa}. & UPOS & \texttt{ADJ} & \texttt{VERB} & \texttt{VERB}\\
+\addlinespace[3pt]
+\textbf{Recentissima} anche la creazione di "Splatter" ... & \texttt{Degree} & \texttt{Abs} & \texttt{Abs} & \texttt{<NONE>}\\
+\bottomrule
+\end{tabularx}
+\caption{Esempi sul test: parola bersaglio in grassetto ed estratti abbreviati con puntini. L'ultima riga confronta \texttt{Degree}; \texttt{<NONE>} ne indica l'assenza.}
+\label{tab:contextual-errors}
+\end{table}
+
+Nel gold, \emph{eletto} identifica \emph{Presidente} come aggettivo: BERT riproduce questa annotazione, mentre UDPipe assegna \texttt{VERB} e caratteristiche di participio. Anche \emph{conclusa} è annotata come \texttt{ADJ}, ma entrambi i sistemi la trattano come verbo; i due casi mostrano come la stessa origine participiale possa accompagnarsi a decisioni diverse nel contesto.
+
+Per \emph{Ministro}, UDPipe segue il gold \texttt{PROPN}, mentre BERT assegna \texttt{NOUN}: il caso richiama il trattamento dei titoli istituzionali nel treebank, rispetto al quale viene calcolata la correttezza. In \emph{Recentissima}, invece, entrambi riconoscono \texttt{ADJ}, ma BERT omette \texttt{Degree=Abs} pur predicendo correttamente genere e numero; distinguere la categoria grammaticale dall'insieme morfologico permette così di localizzare l'errore.
 
 \chapter{Conclusioni}
 \label{chap:conclusions}
 
-Il progetto ha adattato BERT italiano al PoS tagging sul benchmark UD Italian-ISDT 2.15, utilizzando gli split ufficiali e la segmentazione gold. Il modello fine-tuned raggiunge un'accuracy UPOS di circa il 98,81\% nella prima fase e, dopo l'estensione congiunta a UPOS e \texttt{FEATS}, ottiene un'accuracy UPOS di circa il 98,84\% e una macro-F1 sulle classi presenti di circa il 95,57\%, rispetto al 98,75\% e al 94,48\% di UDPipe 2. Le prestazioni sono in accordo con la letteratura sul PoS tagging italiano; il confronto diretto con UDPipe conferma l'efficacia del modello nelle condizioni considerate.
+Il progetto ha adattato BERT italiano al PoS tagging sul benchmark UD Italian-ISDT 2.15, utilizzando gli split ufficiali e la segmentazione gold. Il modello fine-tuned raggiunge un'accuracy UPOS di circa il 98,81\% nella prima fase e, dopo l'estensione congiunta a UPOS e \texttt{FEATS}, ottiene un'accuracy UPOS di circa il 98,84\% e una macro-F1 sulle classi presenti di circa il 95,57\%, rispetto al 98,75\% e al 94,48\% di UDPipe 2. Le prestazioni sono in accordo con la letteratura sul PoS tagging italiano, mentre gli intervalli appaiati sul test comprendono lo zero: i risultati sostengono l'efficacia del modello nelle condizioni considerate, con incertezza sui piccoli scarti rispetto a UDPipe.
 
-Per la morfologia, BERT fine-tuned raggiunge il 98,31\% di accuracy esatta \texttt{FEATS}, vicino al 98,29\% di UDPipe, mentre la macro-F1 sulle coppie presenti favorisce il riferimento, con il 90,04\% contro l'88,52\% di BERT. La vicinanza delle accuracy indica che i due sistemi classificano correttamente una quota simile di parole, mentre la macro-F1 mette in evidenza differenze nella copertura delle caratteristiche meno frequenti. Le due metriche restituiscono quindi un quadro complementare: una buona correttezza complessiva si accompagna a difficoltà su alcune caratteristiche rare, che incidono maggiormente sulla macro-F1.
+Per la morfologia, BERT fine-tuned raggiunge il 98,31\% di accuracy esatta \texttt{FEATS}, vicino al 98,29\% di UDPipe, mentre la macro-F1 sulle coppie presenti favorisce il riferimento, con il 90,04\% contro l'88,52\% di BERT. Le due metriche restituiscono quindi un quadro complementare: alla buona correttezza complessiva si affiancano difficoltà sulle caratteristiche rare, che incidono maggiormente sulla macro-F1.
 
 I confronti interni mostrano che il fine-tuning migliora nettamente le prestazioni rispetto all'encoder congelato, mentre il CRF offre benefici più circoscritti, soprattutto sulle categorie rare, a fronte di tempi di addestramento maggiori. L'estensione alla morfologia si accompagna a un miglioramento delle prestazioni UPOS, in particolare della macro-F1 sulle classi presenti.
 
 Un possibile sviluppo consiste nell'aggiungere un CRF a ciascuna testa \texttt{FEATS}, estendendo la decodifica strutturata alle sequenze dei singoli attributi; i benefici contenuti osservati su UPOS suggeriscono che anche questa estensione potrebbe produrre guadagni limitati. Miglioramenti più consistenti potrebbero richiedere un'architettura capace di modellare esplicitamente le dipendenze tra categorie grammaticali e attributi morfologici, rappresentando anche i vincoli di compatibilità tra le etichette, oltre alle relazioni tra parole consecutive.
 
-La valutazione su un solo treebank, con segmentazione gold e tre seed, circoscrive le conclusioni; inoltre, le classi rare rendono sensibili le metriche macro~\cite{seeds}. Ulteriori sviluppi comprendono analisi statistiche appaiate e valutazioni su altri treebank o da testo grezzo.
+La valutazione su un solo treebank, con segmentazione gold e tre seed, circoscrive le conclusioni, suggerendo ulteriori analisi statistiche appaiate e valutazioni su altri treebank o da testo grezzo.
 
 \clearpage
 \phantomsection
 \addcontentsline{toc}{chapter}{\bibname}
 \bibliographystyle{unsrturl}
-{\small\raggedright
+{\footnotesize\raggedright
+\setlength{\parskip}{0pt}
 \interlinepenalty=10000
 \bibliography{references}
 }

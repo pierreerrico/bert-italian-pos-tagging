@@ -15,7 +15,7 @@ Il progetto adatta BERT italiano alla predizione UPOS e ne valuta le prestazioni
 | `outputs/bert_upos_then_feats_v2/` | Riepiloghi finali: `results.csv`, `comparison_mean_std.csv`, `comparison.csv`, variazioni appaiate e analisi degli errori. |
 | `outputs/references/udpipe_2_15/` | Predizioni e risposte UDPipe salvate, metadati del riferimento e confronto morfologico ricalcolato. |
 
-Il protocollo finale comprende **18 prove**, tre architetture per due fasi e tre seed (42, 123, 456). I riepiloghi `v2` riuniscono nove prove UPOS riutilizzate da `outputs/bert_upos_then_feats_v1/` e nove prove congiunte UPOS+FEATS conservate in `v2`. La precedente fase congiunta `v1` è preliminare e non entra nel confronto finale. Ciascuna fase dura cinque epoche; la seconda parte dal checkpoint UPOS della stessa architettura e dello stesso seed.
+Il protocollo finale comprende **18 prove**, tre architetture per due fasi e tre seed (42, 123, 456). I riepiloghi `v2` riuniscono nove prove UPOS riutilizzate da `outputs/bert_upos_then_feats_v1/` e nove prove congiunte UPOS+FEATS conservate in `v2`. Ciascuna fase dura cinque epoche; la seconda parte dal checkpoint UPOS della stessa architettura e dello stesso seed.
 
 ## Verifica offline del confronto morfologico
 
@@ -45,3 +45,19 @@ Le revisioni, gli hash dei dati e le versioni effettive dell'ambiente sono regis
 ## Spazio e conservazione degli output
 
 Dopo la pulizia restano i 18 modelli selezionati nelle rispettive cartelle `best_model`, con predizioni, metriche, cronologie e metadati. Le copie intermedie e gli stati degli ottimizzatori sono stati eliminati; per inferenza e valutazione utilizzare `best_model`. Dettagli in [STORAGE_AUDIT.md](STORAGE_AUDIT.md).
+
+
+## Analisi statistica appaiata ed esempi contestuali
+
+Dalla cartella del progetto:
+
+```powershell
+python -B evaluate_upos_uncertainty.py
+python -B extract_error_examples.py
+```
+
+Il primo script richiede NumPy e usa 10.000 ricampionamenti appaiati di frasi (seed casuale 20261109). Accuracy e macro-F1 sono ricalcolate per ogni modello salvato, con intervalli separati per i tre seed: le tre valutazioni del medesimo test non vengono sommate come osservazioni indipendenti. L'inventario macro-F1 resta fissato alle 15 classi presenti nel test; gli output documentano anche le repliche prive di classi rare.
+
+I risultati, gli hash dei file di origine e i parametri si trovano in `outputs/references/udpipe_2_15/paired_bootstrap/`: `summary.csv`, `analysis.json` e `bootstrap_scores.npz`. Gli intervalli percentile sono descrittivi e condizionati ai modelli gia addestrati; non costituiscono un test globale di equivalenza o superiorita.
+
+Il secondo script verifica quattro casi illustrativi contro il CoNLL-U gold e gli output UDPipe, controllando che le predizioni BERT coincidano nei tre seed. Salva contesti, indici, etichette e hash in `outputs/references/qualitative_examples.json`. Entrambi gli script lavorano su file locali e non eseguono training o inferenza.

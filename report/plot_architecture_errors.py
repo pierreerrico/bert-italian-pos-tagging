@@ -41,11 +41,11 @@ importance=collections.Counter()
 for (g,p),n in counts.items():importance[g]+=n;importance[p]+=n
 tags=[tag for tag,n in importance.most_common(6)]
 m=np.array([[counts[g,p] if g!=p else 0 for p in tags] for g in tags])
-fig,ax=plt.subplots(figsize=(8.3,6.8));im=ax.imshow(np.ma.masked_where(np.eye(len(tags)),m),cmap='Blues',vmin=0,vmax=max(m.max(),1))
+fig,ax=plt.subplots(figsize=(8.3,3.3));im=ax.imshow(np.ma.masked_where(np.eye(len(tags)),m),cmap='Blues',vmin=0,vmax=max(m.max(),1),aspect='auto')
 ax.set_xticks(range(6),tags,fontfamily='monospace');ax.set_yticks(range(6),tags,fontfamily='monospace');ax.set_xlabel('Tag predetto',labelpad=10);ax.set_ylabel('Tag gold',labelpad=10)
 for i in range(6):
- for j in range(6):ax.text(j,i,'-' if i==j else str(m[i,j]),ha='center',va='center',fontsize=13,color='white' if m[i,j]>m.max()*.55 else '#24343d')
+ for j in range(6):ax.text(j,i,'-' if i==j else str(m[i,j]),ha='center',va='center',fontsize=15,color='white' if m[i,j]>m.max()*.55 else '#24343d')
 for spine in ax.spines.values():spine.set_visible(False)
-ax.tick_params(length=0);fig.colorbar(im,ax=ax,shrink=.7,label='Errori aggregati sui tre seed')
+ax.tick_params(length=0,labelsize=12);fig.colorbar(im,ax=ax,shrink=.7,label='Errori aggregati sui tre seed')
 fig.savefig(out/'upos_error_confusions.pdf',bbox_inches='tight');fig.savefig(out/'upos_error_confusions.png',dpi=170,bbox_inches='tight');plt.close(fig)
 print('Anteprime create; categorie della matrice:',', '.join(tags))

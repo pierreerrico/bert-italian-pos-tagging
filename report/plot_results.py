@@ -80,7 +80,7 @@ save(fig,'feats_reference_comparison')
 
 # Learning curves: saved training logs, all three seeds of the principal model.
 import numpy as np
-fig,axes=plt.subplots(2,2,figsize=(8.8,5.6),layout='constrained')
+fig,axes=plt.subplots(2,2,figsize=(8.8,5.0),layout='constrained')
 for col,(directory,system,title) in enumerate([
  ('bert_upos_then_feats_v1','linear_upos','Fase 1 - solo UPOS'),
  ('bert_upos_then_feats_v2','linear_upos_feats','Fase 2 - UPOS + FEATS')]):
