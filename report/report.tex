@@ -393,7 +393,7 @@ La media delle loss FEATS mantiene il peso complessivo del compito morfologico i
 \section{Procedura di addestramento}
 \label{sec:method-training}
 
-Il notebook di implementazione, che raccoglie preparazione dei dati, addestramento e valutazione, è disponibile nel repository del progetto~\cite{repo}. L'ottimizzazione utilizza AdamW~\cite{adamw2019} attraverso il \texttt{Trainer} di Transformers~\cite{hf}, con i learning rate della Tabella~\ref{tab:models} e le impostazioni comuni della Tabella~\ref{tab:training-settings}. Il valore più elevato della variante congelata riguarda soltanto le teste, mentre nelle architetture fine-tuned il learning rate viene applicato anche all'encoder; il seed viene impostato prima della creazione del modello e controlla l'inizializzazione delle nuove teste, l'ordine dei batch e le operazioni stocastiche.
+Il notebook di implementazione, che raccoglie preparazione dei dati, addestramento e valutazione, è disponibile nel repository del progetto~\cite{repo}. L'ottimizzazione utilizza AdamW~\cite{adamw2019} attraverso il \texttt{Trainer} di Transformers~\cite{hf}, con i learning rate della Tabella~\ref{tab:models} e le impostazioni comuni della Tabella~\ref{tab:training-settings}. Il seed viene impostato prima della creazione del modello e controlla l'inizializzazione delle nuove teste, l'ordine dei batch e le operazioni stocastiche.
 
 \begin{table}[htbp]
 \centering
@@ -559,10 +559,10 @@ Seed & Scarto & \shortstack{Intervallo\\al 95\%} & Scarto & \shortstack{Interval
 \section{Posizionamento rispetto alla letteratura}
 \label{sec:results-literature-comparison}
 
-Il confronto con la letteratura considera sistemi pertinenti al PoS tagging italiano, con particolare riferimento ai risultati su Italian-ISDT. La Tabella~\ref{tab:literature} raccoglie sia encoder Transformer italiani sia modelli linguistici generativi di grandi dimensioni (LLM), riportando per ciascuno la metrica e le condizioni di valutazione disponibili.
+Il confronto con la letteratura considera sistemi pertinenti al PoS tagging italiano, con particolare riferimento ai risultati su Italian-ISDT. La Tabella~\ref{tab:literature} affianca ai risultati UPOS del progetto quelli di encoder Transformer italiani, riportando metrica e condizioni di valutazione disponibili.
 
 \begin{table}[!htbp]
-\centering\small
+\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.7cm}rX}
 \toprule
@@ -572,11 +572,13 @@ UmBERTo~\cite{tamburini2020} & $98{,}78\pm0{,}08$ & Accuracy; UD-ISDT 2.5; almen
 BERT italiano \textit{cased}~\cite{schweter2020} & $98{,}84\pm0{,}06$ & Accuracy; ISDT, commit \texttt{f20fa2b}; 5 esecuzioni.\\
 BERT italiano XXL \textit{cased}~\cite{schweter2020} & $98{,}90\pm0{,}03$ & Accuracy; stesso protocollo di BERT italiano.\\
 UmBERTo Commoncrawl \textit{cased}~\cite{umberto2020} & $98{,}977$ & Accuracy; Italian-ISDT, release non specificata.\\
-Gemma-2-9B multilingue~\cite{matsuda2025} & $98{,}8$ & F1 UPOS; UD 2.15; output generati.\\
-LLM con LoRA, quattro modelli~\cite{matsuda2026} & $98{,}3$--$98{,}8$ & F1 UPOS; UD 2.15; LoRA, generazione in due passi.\\
+\midrule
+\multicolumn{3}{l}{\textit{Questo lavoro: fase UPOS; UD 2.15; segmentazione gold; 3 seed}}\\
+BERT fine-tuned & $98{,}74\pm0{,}11$ & Accuracy; macro-F1 (15 classi presenti): $94{,}38\pm1{,}07$.\\
+BERT fine-tuned + CRF & $98{,}77\pm0{,}09$ & Accuracy; macro-F1 (15 classi presenti): $94{,}86\pm1{,}31$.\\
 \bottomrule
 \end{tabularx}
-\caption{Riferimenti di letteratura per UPOS su Italian-ISDT. I valori sono quelli delle fonti e non costituiscono una graduatoria su un protocollo comune; i risultati dei repository degli autori sono distinti da quelli degli articoli.}
+\caption{Risultati del progetto e riferimenti di letteratura per UPOS su Italian-ISDT. I valori non costituiscono una graduatoria su un protocollo comune; i risultati dei repository degli autori sono distinti da quelli degli articoli.}
 \label{tab:literature}
 \end{table}
 
@@ -584,7 +586,7 @@ Le accuracy del modello sviluppato sono numericamente vicine a quelle riportate 
 
 Le condizioni sui dati sono riportate per contestualizzare i valori della tabella. Il confronto dei file ISDT del commit \texttt{f20fa2b}, usato da Schweter, con UD 2.15 conferma che il test conserva le stesse 482 frasi e 10\,417 parole, con forme e confini di frase identici, ma contiene cinque parole con etichetta UPOS diversa; anche training e development presentano differenze, come verificabile con lo script di confronto incluso nel repository del progetto~\cite{repo}.
 
-I lavori di Matsuda et al.~\cite{matsuda2025} e Matsuda e Asahara~\cite{matsuda2026} ampliano il confronto ai modelli generativi su UD 2.15. Nel secondo, gli LLM sono adattati mediante Low-Rank Adaptation (LoRA), una tecnica che limita i parametri aggiornati, e generano prima i tag UPOS e poi le dipendenze sintattiche tra le parole, senza ripetere le forme nell'output.
+Come contesto recente, i lavori di Matsuda et al.~\cite{matsuda2025} e Matsuda e Asahara~\cite{matsuda2026} impiegano modelli linguistici generativi di grandi dimensioni (LLM) su UD 2.15: su ISDT riportano rispettivamente il 98,8\% di F1 UPOS per Gemma-2-9B multilingue e il 98,3--98,8\% per quattro LLM adattati. È una F1 aggregata sui token, distinta dalla macro-F1 per classe, che coincide con l'accuracy quando tutte le parole sono correttamente allineate. Negli output generativi, omissioni ed errori di allineamento possono incidere sul punteggio, rendendo indicativo il confronto.
 
 Per contestualizzare l'estensione \texttt{FEATS}, si considera il sistema di Tamburini~\cite{tamburini2016}, valutato sui benchmark EVALITA: una rete BiLSTM-CRF riceve rappresentazioni lessicali arricchite con le analisi di AnIta, un analizzatore morfologico italiano. Nel progetto la morfologia viene appresa come compito supervisionato aggiuntivo, senza analisi fornite da uno strumento esterno.
 
